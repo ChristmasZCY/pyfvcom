@@ -48,5 +48,5 @@ for c, ind in enumerate(indices):
     time = Time(fvcom, figure=fig, axes=ax)
     time.plot_line(fvcom.data.temp[:, 0, ind])
     time.axes.set_title('Sea surface temperature nearest to position {}, {}'.format(*xy[c, :]))
-    time.axes.set_ylabel('{} ({})'.format(fvcom.atts.temp.long_name, fvcom.atts.temp.units))
+    time.axes.set_ylabel(f'{fvcom.atts.temp.long_name} ({fvcom.atts.temp.units})')
 

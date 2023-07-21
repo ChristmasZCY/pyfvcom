@@ -54,13 +54,7 @@ def fix_range(a, nmin, nmax):
     C = nmin
     D = nmax
 
-    # In the case where all the values are the same, just return the original values.
-    if A != B:
-        b = (((D - C) * (a - A)) / (B - A)) + C
-    else:
-        b = a
-
-    return b
+    return (((D - C) * (a - A)) / (B - A)) + C if A != B else a
 
 
 def ind2sub(array_shape, index):
@@ -162,7 +156,7 @@ class _DeHTMLParser(HTMLParser):
         text = data.strip()
         if len(text) > 0:
             text = sub('[ \t\r\n]+', ' ', text)
-            self.__text.append(text + ' ')
+            self.__text.append(f'{text} ')
 
     def handle_starttag(self, tag, attrs):
         if tag == 'p':
@@ -245,10 +239,10 @@ def make_climate(data, dt_list):
         
     """
     yd_list = [this_dt.timetuple().tm_yday for this_dt in dt_list]
-    climate = []
-    for this_day in np.unique(yd_list):
-        climate.append(np.mean(data[yd_list == this_day, ...], axis=0))
-
+    climate = [
+        np.mean(data[yd_list == this_day, ...], axis=0)
+        for this_day in np.unique(yd_list)
+    ]
     return np.unique(yd_list), np.asarray(climate)
 
 def expand_climate(dt_list):

@@ -74,7 +74,11 @@ class GridToolsTest(TestCase):
         test.assert_equal(z, test_z)
 
     def test_mesh2grid_2(self):
-        test_x, test_y, test_z = [[0, 0.5, 1] for i in range(3)], [[0] * 3, [0.5] * 3, [1] * 3], [[0, 0, 1], [0, 0, 1], [1, 1, 0]]
+        test_x, test_y, test_z = (
+            [[0, 0.5, 1] for _ in range(3)],
+            [[0] * 3, [0.5] * 3, [1] * 3],
+            [[0, 0, 1], [0, 0, 1], [1, 1, 0]],
+        )
         nnx, nny = np.array([0, 0.5, 1]), np.array([0, 0.5, 1])
         nx, ny = np.meshgrid(nnx, nny)
         x, y, z = mesh2grid(self.x, self.y, self.z, nx, ny)
@@ -154,9 +158,7 @@ class GridToolsTest(TestCase):
         test_bad_ids = [False] * len(self.x)
         for i in [0, 4, 6, 8]:
             test_bad_ids[i] = True
-        bad_ids = []
-        for i in range(len(self.x)):
-            bad_ids.append(find_bad_node(self.tri, i))
+        bad_ids = [find_bad_node(self.tri, i) for i in range(len(self.x))]
         test.assert_equal(bad_ids, test_bad_ids)
 
     def test_trigradient(self):

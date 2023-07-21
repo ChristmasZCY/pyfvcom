@@ -396,7 +396,7 @@ class Time(object):
             self.axes.xaxis.set_major_formatter(self.date_format)
 
         if self.add_legend:
-            label = f'{scale} $\mathrm{{ms^{-1}}}$'
+            label = f'{scale} $\mathrm{{ms^-1}}$'
             self.quiver_key = plt.quiverkey(self.quiver_plot, 0.9, 0.9, scale, label, coordinates='axes')
 
         # Turn off the y-axis labels as they don't correspond to the vector lengths.
@@ -577,10 +577,7 @@ class Plotter(object):
         if add_coast:
             self.coastfile = coastfile
         self.bg_color = bg_color
-        if not line_width:
-            self.line_width = line_width
-        else:
-            self.line_width = rcParams['lines.linewidth']
+        self.line_width = line_width if not line_width else rcParams['lines.linewidth']
         self.axis_labels = axis_labels
         # Plot instances to hold the plot objects.
         self.quiver_plot = None
@@ -672,7 +669,6 @@ class Plotter(object):
             self.figure = plt.figure(figsize=figsize)
             self.figure.set_facecolor('white')
 
-        # If plot extents were not given, use min/max lat/lon values
         if self.extents is None:
             if self.cartesian:
                 self.extents = np.array([self.x.min(), self.x.max(),
@@ -682,58 +678,56 @@ class Plotter(object):
                                          self.lat.min(), self.lat.max()])
 
         # Create mapping object if appropriate.
-        if not self.cartesian:
-            if self.mapper == 'basemap':
-                if have_basemap:
-                    if self.m is None:
-                        self.m = Basemap(llcrnrlon=np.min(self.extents[:2]),
-                                         llcrnrlat=np.min(self.extents[-2:]),
-                                         urcrnrlon=np.max(self.extents[:2]),
-                                         urcrnrlat=np.max(self.extents[-2:]),
-                                         rsphere=(6378137.00, 6356752.3142),
-                                         resolution=self.res,
-                                         projection='merc',
-                                         lat_0=np.mean(self.extents[-2:]),
-                                         lon_0=np.mean(self.extents[:2]),
-                                         lat_ts=np.mean(self.extents[-2:]),
-                                         ax=self.axes,
-                                         **self.bmargs)
-                    # Make a set of coordinates.
-                    self.mx, self.my = self.m(self.lon, self.lat)
-                    self.mxc, self.myc = self.m(self.lonc, self.latc)
-                else:
-                    raise RuntimeError('mpl_toolkits is not available in this Python.')
-            elif self.mapper == 'cartopy':
-                self.projection = ccrs.PlateCarree() #ccrs.LambertConformal(central_longitude=np.mean(self.extents[:2]),
-                                                     #   central_latitude=np.mean(self.extents[2:]),
-                                                     #   false_easting=400000, false_northing=400000)
-
-                # Make a coastline depending on whether we've got a GSHHS resolution or a Natural Earth one or a supplied file.
-                if self.add_coast:
-                    # Use the file provided to Plotter class.
-                    print(f'Loading file {self.coastfile} and adding coastline to plot', end=' ', flush=True)
-                    land = shpreader.Reader(self.coastfile)
-                    coastline = cascaded_union(list(land.geometries()))
-                    land = coastline
-                elif self.res in ('c', 'l', 'i', 'h', 'f'):
-                    # Use the GSHHS data as in Basemap (a lot slower than the cartopy data).
-                    land = cfeature.GSHHSFeature(scale=self.res, edgecolor='k', facecolor='none')
-                else:
-                    # Make a land object which is fairly similar to the Basemap on we use.
-                    land = cfeature.NaturalEarthFeature('physical', 'land', self.res, edgecolor='k', facecolor='0.6')
-                # Make a set of coordinates.
-                self.mx, self.my = self.lon, self.lat
-                self.mxc, self.myc = self.lonc, self.latc
-
-
-
-            else:
-                raise ValueError(f"Unrecognised mapper value '{self.mapper}'. Choose 'basemap' (default) or 'cartopy'")
-        else:
+        if self.cartesian:
             # Easy peasy, just the cartesian coordinates.
             self.mx, self.my = self.x, self.y
             self.mxc, self.myc = self.xc, self.yc
 
+        elif self.mapper == 'basemap':
+            if not have_basemap:
+                raise RuntimeError('mpl_toolkits is not available in this Python.')
+            if self.m is None:
+                self.m = Basemap(llcrnrlon=np.min(self.extents[:2]),
+                                 llcrnrlat=np.min(self.extents[-2:]),
+                                 urcrnrlon=np.max(self.extents[:2]),
+                                 urcrnrlat=np.max(self.extents[-2:]),
+                                 rsphere=(6378137.00, 6356752.3142),
+                                 resolution=self.res,
+                                 projection='merc',
+                                 lat_0=np.mean(self.extents[-2:]),
+                                 lon_0=np.mean(self.extents[:2]),
+                                 lat_ts=np.mean(self.extents[-2:]),
+                                 ax=self.axes,
+                                 **self.bmargs)
+            # Make a set of coordinates.
+            self.mx, self.my = self.m(self.lon, self.lat)
+            self.mxc, self.myc = self.m(self.lonc, self.latc)
+        elif self.mapper == 'cartopy':
+            self.projection = ccrs.PlateCarree() #ccrs.LambertConformal(central_longitude=np.mean(self.extents[:2]),
+                                                 #   central_latitude=np.mean(self.extents[2:]),
+                                                 #   false_easting=400000, false_northing=400000)
+
+            # Make a coastline depending on whether we've got a GSHHS resolution or a Natural Earth one or a supplied file.
+            if self.add_coast:
+                # Use the file provided to Plotter class.
+                print(f'Loading file {self.coastfile} and adding coastline to plot', end=' ', flush=True)
+                land = shpreader.Reader(self.coastfile)
+                coastline = cascaded_union(list(land.geometries()))
+                land = coastline
+            elif self.res in ('c', 'l', 'i', 'h', 'f'):
+                # Use the GSHHS data as in Basemap (a lot slower than the cartopy data).
+                land = cfeature.GSHHSFeature(scale=self.res, edgecolor='k', facecolor='none')
+            else:
+                # Make a land object which is fairly similar to the Basemap on we use.
+                land = cfeature.NaturalEarthFeature('physical', 'land', self.res, edgecolor='k', facecolor='0.6')
+            # Make a set of coordinates.
+            self.mx, self.my = self.lon, self.lat
+            self.mxc, self.myc = self.lonc, self.latc
+
+
+
+        else:
+            raise ValueError(f"Unrecognised mapper value '{self.mapper}'. Choose 'basemap' (default) or 'cartopy'")
         # Create plot axes
         if not self.axes:
             self.axes = self.figure.add_subplot(1, 1, 1, projection=self.projection)
@@ -843,17 +837,14 @@ class Plotter(object):
             xyt = proj_xyz[..., :2]
             ls = LineString(xyt.tolist())
             locs = axis.intersection(ls)
-            
+
             if not self.cartesian:
                 meridians = np.arange(np.floor(np.min(self.extents[:2])), np.ceil(np.max(self.extents[:2])), self.tick_inc[0])
                 parallels = np.arange(np.floor(np.min(self.extents[2:])), np.ceil(np.max(self.extents[2:])), self.tick_inc[1])
                 self.m.drawparallels(parallels, labels=[1, 0, 0, 0], fontsize=rcParams['axes.labelsize'], linewidth=None, ax=self.axes)
                 self.m.drawmeridians(meridians, labels=[0, 0, 0, 1], fontsize=rcParams['axes.labelsize'], linewidth=None, ax=self.axes)
 
-            if not locs:
-                tick = [None]
-            else:
-                tick = tick_extractor(locs.xy)
+            tick = [None] if not locs else tick_extractor(locs.xy)
             _ticks.append(tick[0])
         # Remove ticks that aren't visible:
         ticklabels = copy.copy(ticks).tolist()

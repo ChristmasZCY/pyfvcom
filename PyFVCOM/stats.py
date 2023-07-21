@@ -121,9 +121,7 @@ def rmse(a, b, axis=0):
 
     """
 
-    rmse = np.sqrt(np.nanmean((a - b)**2, axis=axis))
-
-    return rmse
+    return np.sqrt(np.nanmean((a - b)**2, axis=axis))
 
 
 def calculate_coefficient(x, y, min_samples=9, noisy=False):
@@ -164,8 +162,7 @@ def calculate_coefficient(x, y, min_samples=9, noisy=False):
     if len(np.ma.compressed(x)) > min_samples:
         # r = np.ma.corrcoef(xt, yt)[0, 1]
         r, p = stats.pearsonr(x, y)
-    else:
-        if noisy:
-            print('Skipping data (all masked or fewer than 9 data points).')
+    elif noisy:
+        print('Skipping data (all masked or fewer than 9 data points).')
 
     return r, p

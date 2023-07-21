@@ -102,9 +102,7 @@ def mask_to_fvcom_meshgrid(fvcom_ll, fvcom_tri, grid_mesh_lons, grid_mesh_lats, 
     lats = grid_mesh_lats.ravel()
     points_mask = mask_to_fvcom(fvcom_ll, fvcom_tri, lons, lats, split_domain_check=False)
 
-    grid_land_mask = np.reshape(points_mask, grid_mesh_lons.shape)
-
-    return grid_land_mask
+    return np.reshape(points_mask, grid_mesh_lons.shape)
 
 
 class MPIRegularInterpolateWorker():
@@ -145,11 +143,7 @@ class MPIRegularInterpolateWorker():
             self.have_mpi = False
 
         self.comm = comm
-        if self.have_mpi:
-            self.rank = self.comm.Get_rank()
-        else:
-            self.rank = 0
-
+        self.rank = self.comm.Get_rank() if self.have_mpi else 0
         self.root = root
         self._noisy = verbose
         if verbose and comm is None:
@@ -178,13 +172,19 @@ class MPIRegularInterpolateWorker():
 
         """
         if self._noisy:
-            print('Rank {}: Loading grid'.format(self.rank))
+            print(f'Rank {self.rank}: Loading grid')
         # Check ther regular grid limits fit with the grid resolution specified
-        if not round((upper_right_ll[0] - lower_left_ll[0]) % grid_res, 10) % grid_res == 0:
+        if (
+            round((upper_right_ll[0] - lower_left_ll[0]) % grid_res, 10) % grid_res
+            != 0
+        ):
             print('Longitudes not divisible by grid resolution, extending grid')
             upper_right_ll[0] = round(np.ceil((upper_right_ll[0] - lower_left_ll[0])/grid_res)*grid_res, 10) + lower_left_ll[0]
 
-        if not round((upper_right_ll[1] - lower_left_ll[1]) % grid_res, 10) % grid_res == 0:
+        if (
+            round((upper_right_ll[1] - lower_left_ll[1]) % grid_res, 10) % grid_res
+            != 0
+        ):
             print('Latitudes not divisible by grid resolution, extending grid')
             upper_right_ll[1] = round(np.ceil((upper_right_ll[1] - lower_left_ll[1])/grid_res)*grid_res, 10) + lower_left_ll[1]
 
@@ -220,7 +220,7 @@ class MPIRegularInterpolateWorker():
 
         if time_varying_depth:
             if self._noisy:
-                print('Rank {}: Calculating time varying mask'.format(self.rank))
+                print(f'Rank {self.rank}: Calculating time varying mask')
             fvcom_dep_lays = -unstructured_grid_depths(self.fvcom_grid.h, self.fvcom_grid.zeta, self.fvcom_grid.sigma)
             ## change to depth from free surface since I *think* this is what cmems does?
             self.fvcom_grid.dep_lays = fvcom_dep_lays - np.tile(np.min(fvcom_dep_lays, axis=1)[:, np.newaxis, :], [1, fvcom_dep_lays.shape[1], 1])
@@ -231,7 +231,7 @@ class MPIRegularInterpolateWorker():
                 # retriangulate for each depth layer, can be multiple if there are split regions and interpolate
                 for this_depth_lay_ind, this_depth_lay in enumerate(self.regular_grid.dep_lays):
                     if self._noisy:
-                        print('Rank {}: Time step {} Depth {}'.format(self.rank, this_t, this_depth_lay_ind))
+                        print(f'Rank {self.rank}: Time step {this_t} Depth {this_depth_lay_ind}')
                     this_depth_layer_nodes = np.where(self.fvcom_grid.total_depth[this_t,:] >=this_depth_lay)[0]
                     if this_depth_layer_nodes.size:
                         this_depth_tri = reduce_triangulation(self.fvcom_grid.triangles, this_depth_layer_nodes)
@@ -254,13 +254,11 @@ class MPIRegularInterpolateWorker():
         if mode in ['nodes', 'surface']:
             self.fvcom_grid.select_points = self.fvcom_grid.nodes
             self.fvcom_grid.select_ll = self.fvcom_grid.ll
+            self.fvcom_grid.select_dep_lays = self.fvcom_grid.dep_lays
         else:
             self.fvcom_grid.select_points = self.fvcom_grid.elements
             self.fvcom_grid.select_ll = self.fvcom_grid.elements_ll
 
-        if mode in ['nodes', 'surface']:
-            self.fvcom_grid.select_dep_lays = self.fvcom_grid.dep_lays
-        else:
             fvcom_dep_lays = -unstructured_grid_depths(self.fvcom_grid.h_center, self.fvcom_grid.zeta_center, self.fvcom_grid.sigma_center)
             ## change to depth from free surface since I *think* this is what cmems does?
             self.fvcom_grid.select_dep_lays = fvcom_dep_lays - np.tile(np.min(fvcom_dep_lays, axis=1)[:, np.newaxis, :], [1, fvcom_dep_lays.shape[1], 1])
@@ -276,7 +274,7 @@ class MPIRegularInterpolateWorker():
 
         for this_t in np.arange(0, len(self.time_indices)):
             if self._noisy:
-                print('Rank {}: Interpolating time step {} for {}'.format(self.rank, this_t, variable))
+                print(f'Rank {self.rank}: Interpolating time step {this_t} for {variable}')
             if mode == 'surface':
                 depth_lay_data = fvcom_data[this_t, :]
                 interp_data = self._Interpolater(depth_lay_data).T
@@ -327,17 +325,13 @@ class MPIUnstructuredInterpolateWorker():
             self.have_mpi = False
 
         self.comm = comm
-        if self.have_mpi:
-            self.rank = self.comm.Get_rank()
-        else:
-            self.rank = 0
-
+        self.rank = self.comm.Get_rank() if self.have_mpi else 0
         self.root = root
         self._noisy = verbose
         if verbose and comm is None:
             print('For verbose output you need to pass a comm object so it knows the process rank. Gonna crash if not.')
 
-        self.data_coords = np.load(data_coords_file)       
+        self.data_coords = np.load(data_coords_file)
         self.data = np.load(data_file)
 
         if cartesian:
@@ -346,10 +340,10 @@ class MPIUnstructuredInterpolateWorker():
             self.model_coords = np.asarray([self.fvcom_file.grid.lon, self.fvcom_file.grid.lat]).T
 
     def InterpolateFVCOM(self, data_indices):
-        all_interped_data = [] 
-        for this_index in data_indices:
-            all_interped_data.append(self._Interpolater(self.data[this_index,:]))
-
+        all_interped_data = [
+            self._Interpolater(self.data[this_index, :])
+            for this_index in data_indices
+        ]
         return np.asarray(all_interped_data)
 
     def _Interpolater(self, data):
