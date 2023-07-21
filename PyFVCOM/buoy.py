@@ -43,12 +43,7 @@ def _split_lines(line, remove_empty=False, remove_trailing=False):
     """
 
     delimiters = (';', ',', '\t', ' ')
-    delimiter = None
-    for d in delimiters:
-        if d in line:
-            delimiter = d
-            break
-
+    delimiter = next((d for d in delimiters if d in line), None)
     # Clear out newlines.
     line = line.strip('\n')
 
@@ -142,17 +137,19 @@ def get_buoy_data(db, table, fields, noisy=False):
                            'unavailable.')
 
     if noisy:
-        print('Getting data for {} from the database...'.format(table), end=' ')
+        print(f'Getting data for {table} from the database...', end=' ')
 
     try:
         with sqlite3.connect(db) as con:
             c = con.cursor()
             # I know, using a string is Bad. But it works and it's only me # working with this.
-            data = np.asarray(c.execute('SELECT {} FROM {}'.format(','.join(fields), table)).fetchall()).astype(float)
+            data = np.asarray(
+                c.execute(f"SELECT {','.join(fields)} FROM {table}").fetchall()
+            ).astype(float)
         if noisy:
             print('done.')
     except sqlite3.Error as e:
-        print('Error %s:' % e.args[0])
+        print(f'Error {e.args[0]}:')
         data = np.asarray([False])
 
     return data
@@ -227,23 +224,16 @@ class Buoy(object):
             elif extension == '.txt':
                 # Probably WCO data, which is usually space separated, so nuke duplicate spaces.
                 empty = True
-            elif 'L4' in str(self._file):
+            elif 'L4' in str(self._file) or 'E1' in str(self._file):
                 # The other WCO data format.
                 empty = False
                 trailing = False
-            elif 'E1' in str(self._file):
-                # The other WCO data format.
-                empty = False
-                trailing = False
-
             self._lines = f.readlines()
             self._lines = [_split_lines(i, remove_empty=empty, remove_trailing=trailing) for i in self._lines]
 
             # If we've left empty columns in, replace them with NaNs. This is not elegant.
             if not empty:
-                new_lines = []
-                for line in self._lines:
-                    new_lines.append([np.nan if i == '' else i for i in line])
+                new_lines = [[np.nan if i == '' else i for i in line] for line in self._lines]
                 self._lines = new_lines
 
     def load(self):
@@ -335,7 +325,7 @@ class Buoy(object):
                         except ValueError:
                             # Probably strings so just leave as is. Check for clearly nonsense values, and if we get
                             # them, replace with NaN.
-                            if any(['*' in i for i in data]):
+                            if any('*' in i for i in data):
                                 data = np.asarray(data)
                                 data[data == '*******'] = np.nan
                                 data = data.tolist()
@@ -364,17 +354,19 @@ class Buoy(object):
                     if name in self._time_header:
                         self.time_header.append(name)
                         name_index = self._header_indices[name]
-                        data = []
-                        for line in self._lines[self._header_length:]:
-                            data.append(line[name_index])
+                        data = [line[name_index] for line in self._lines[self._header_length:]]
                         setattr(self, name.strip().replace(' ', '_').replace('(', '').replace(')', ''), np.asarray(data))
 
             # Now make datetime objects from the time.
             self.datetime = []
             if hasattr(self, 'Year') and hasattr(self, 'Serial') and hasattr(self, 'Time'):
                 # First Western Channel Observatory format.
-                for year, doy, time in zip(self.Year, self.Serial, self.Time):
-                    self.datetime.append(datetime.strptime('{y}{doy} {hm}'.format(y=year, doy=doy, hm=time), '%Y%j %H.%M'))
+                self.datetime.extend(
+                    datetime.strptime(
+                        '{y}{doy} {hm}'.format(y=year, doy=doy, hm=time), '%Y%j %H.%M'
+                    )
+                    for year, doy, time in zip(self.Year, self.Serial, self.Time)
+                )
             elif hasattr(self, 'Year') and hasattr(self, 'Jd') and hasattr(self, 'Time'):
                 # Different Western Channel Observatory format.
                 for year, doy, time in zip(self.Year, self.Jd, self.Time):
@@ -391,12 +383,16 @@ class Buoy(object):
                         self.datetime.append(datetime.strptime('{date} {time}'.format(date=date, time=time), '%y%m%d %H%M%S'))
             elif hasattr(self, 'Time_GMT'):
                 # CEFAS format.
-                for date in getattr(self, 'Time_GMT'):
-                    self.datetime.append(datetime.strptime(date, '%Y-%m-%d %H:%M:%S'))
+                self.datetime.extend(
+                    datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
+                    for date in getattr(self, 'Time_GMT')
+                )
             elif hasattr(self, 'Date/Time_GMT'):
                 # CCO format.
-                for date in getattr(self, 'Date/Time_GMT'):
-                    self.datetime.append(datetime.strptime(date, '%d-%b-%Y %H:%M:%S'))
+                self.datetime.extend(
+                    datetime.strptime(date, '%d-%b-%Y %H:%M:%S')
+                    for date in getattr(self, 'Date/Time_GMT')
+                )
 
         def _fvcom_time_representations(self):
             """

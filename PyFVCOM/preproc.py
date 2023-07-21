@@ -404,8 +404,10 @@ class Model(Domain):
         Remaining arguments are passed to WriteForcing.
 
         """
-        globals = {'title': 'bottom roughness',
-                   'history': 'File created using {} from PyFVCOM'.format(inspect.stack()[0][3])}
+        globals = {
+            'title': 'bottom roughness',
+            'history': f'File created using {inspect.stack()[0][3]} from PyFVCOM',
+        }
         dims = {'nele': self.dims.nele}
 
         with WriteForcing(str(roughness_file), dims, global_attributes=globals, clobber=True, format=format, **kwargs) as z0:
@@ -474,24 +476,27 @@ class Model(Domain):
         sst_files = []
         for date in dates:
             sst_base = sst_dir / Path(str(date.year))
-            sst_files += list(sst_base.glob('*{}*.nc'.format(date.strftime('%Y%m%d'))))
+            sst_files += list(sst_base.glob(f"*{date.strftime('%Y%m%d')}*.nc"))
 
         if noisy:
-            print('To do:\n{}'.format('|' * len(sst_files)), flush=True)
+            print(f"To do:\n{'|' * len(sst_files)}", flush=True)
 
         # Read SST data files and interpolate each to the FVCOM mesh
         lonlat = np.array((self.grid.lon, self.grid.lat))
 
         if serial:
-            results = []
-            for sst_file in sst_files:
-                results.append(self._inter_sst_worker(lonlat, sst_file, 
-                        noisy, var_name=var_name, var_offset=var_offset))
+            results = [
+                self._inter_sst_worker(
+                    lonlat,
+                    sst_file,
+                    noisy,
+                    var_name=var_name,
+                    var_offset=var_offset,
+                )
+                for sst_file in sst_files
+            ]
         else:
-            if not pool_size:
-                pool = multiprocessing.Pool()
-            else:
-                pool = multiprocessing.Pool(pool_size)
+            pool = multiprocessing.Pool(pool_size) if pool_size else multiprocessing.Pool()
             part_func = partial(self._inter_sst_worker, lonlat, 
                     noisy=noisy, var_name=var_name, var_offset=var_offset)
             results = pool.map(part_func, sst_files)
@@ -568,14 +573,16 @@ class Model(Domain):
 
         """
 
-        globals = {'year': str(np.argmax(np.bincount([i.year for i in self.sst.time]))),  # gets the most common year value
-                   'title': 'FVCOM SST 1km merged product File',
-                   'institution': 'Plymouth Marine Laboratory',
-                   'source': 'FVCOM grid (unstructured) surface forcing',
-                   'history': 'File created using {} from PyFVCOM'.format(inspect.stack()[0][3]),
-                   'references': 'http://fvcom.smast.umassd.edu, http://codfish.smast.umassd.edu, http://pml.ac.uk/modelling',
-                   'Conventions': 'CF-1.0',
-                   'CoordinateProjection': 'init=WGS84'}
+        globals = {
+            'year': str(np.argmax(np.bincount([i.year for i in self.sst.time]))),
+            'title': 'FVCOM SST 1km merged product File',
+            'institution': 'Plymouth Marine Laboratory',
+            'source': 'FVCOM grid (unstructured) surface forcing',
+            'history': f'File created using {inspect.stack()[0][3]} from PyFVCOM',
+            'references': 'http://fvcom.smast.umassd.edu, http://codfish.smast.umassd.edu, http://pml.ac.uk/modelling',
+            'Conventions': 'CF-1.0',
+            'CoordinateProjection': 'init=WGS84',
+        }
         dims = {'nele': self.dims.nele, 'node': self.dims.node, 'time': 0, 'DateStrLen': 26, 'three': 3}
 
         with WriteForcing(str(output_file), dims, global_attributes=globals, clobber=True, format=format, **kwargs) as sstgrd:
@@ -638,21 +645,24 @@ class Model(Domain):
         ady_files = list(ady_dir.glob('*.nc'))
 
         if noisy:
-            print('To do:\n{}'.format('|' * len(ady_files)), flush=True)
+            print(f"To do:\n{'|' * len(ady_files)}", flush=True)
 
         # Read ADY data files and interpolate each to the FVCOM mesh
         lonlat = np.array((self.grid.lon, self.grid.lat))
 
         if serial:
-            results = []
-            for ady_file in ady_files:
-                results.append(self._inter_sst_worker(lonlat, ady_file, noisy,
-                                                      var_name='gelbstoff_absorption_satellite', var_offset=0))
+            results = [
+                self._inter_sst_worker(
+                    lonlat,
+                    ady_file,
+                    noisy,
+                    var_name='gelbstoff_absorption_satellite',
+                    var_offset=0,
+                )
+                for ady_file in ady_files
+            ]
         else:
-            if not pool_size:
-                pool = multiprocessing.Pool()
-            else:
-                pool = multiprocessing.Pool(pool_size)
+            pool = multiprocessing.Pool(pool_size) if pool_size else multiprocessing.Pool()
             part_func = partial(self._inter_sst_worker, lonlat, noisy=noisy,
                                 var_name='gelbstoff_absorption_satellite', var_offset=0)
             results = pool.map(part_func, ady_files)
@@ -784,9 +794,18 @@ class Model(Domain):
 
         # Now for each time in the ADY data, interpolate it to the model grid.
         if serial:
-            ady = []
-            for data in regular_ady:
-                ady.append(mp_interp_func((lon.ravel(), lat.ravel(), data.ravel(), self.grid.lon, self.grid.lat)))
+            ady = [
+                mp_interp_func(
+                    (
+                        lon.ravel(),
+                        lat.ravel(),
+                        data.ravel(),
+                        self.grid.lon,
+                        self.grid.lat,
+                    )
+                )
+                for data in regular_ady
+            ]
         else:
             if pool_size is None:
                 pool = multiprocessing.Pool()
@@ -822,14 +841,16 @@ class Model(Domain):
 
         Remaining arguments are passed to WriteForcing.
         """
-        globals = {'year': str(np.argmax(np.bincount([i.year for i in self.ady.time]))),  # gets the most common year value
-                   'title': 'FVCOM Satellite derived Gelbstoff climatology product File',
-                   'institution': 'Plymouth Marine Laboratory',
-                   'source': 'FVCOM grid (unstructured) surface forcing',
-                   'history': 'File created using {} from PyFVCOM'.format(inspect.stack()[0][3]),
-                   'references': 'http://fvcom.smast.umassd.edu, http://codfish.smast.umassd.edu, http://pml.ac.uk/modelling',
-                   'Conventions': 'CF-1.0',
-                   'CoordinateProjection': 'init=WGS84'}
+        globals = {
+            'year': str(np.argmax(np.bincount([i.year for i in self.ady.time]))),
+            'title': 'FVCOM Satellite derived Gelbstoff climatology product File',
+            'institution': 'Plymouth Marine Laboratory',
+            'source': 'FVCOM grid (unstructured) surface forcing',
+            'history': f'File created using {inspect.stack()[0][3]} from PyFVCOM',
+            'references': 'http://fvcom.smast.umassd.edu, http://codfish.smast.umassd.edu, http://pml.ac.uk/modelling',
+            'Conventions': 'CF-1.0',
+            'CoordinateProjection': 'init=WGS84',
+        }
         dims = {'nele': self.dims.nele, 'node': self.dims.node, 'time': 0, 'DateStrLen': 26, 'three': 3}
 
         with WriteForcing(str(output_file), dims, global_attributes=globals, clobber=True, format=format, **kwargs) as sstgrd:
@@ -929,8 +950,7 @@ class Model(Domain):
             sigma_levels = np.tile(self.sigma_tanh(nlev, dl, du), 
                     (self.dims.node, 1))
         else:
-            raise ValueError('Unrecognised sigtype '
-                    + '{} (is it supported?)'.format(sigtype))
+            raise ValueError(f'Unrecognised sigtype {sigtype} (is it supported?)')
 
         # Create a sigma layer variable (i.e. midpoint in the sigma levels).
         sigma_layers = sigma_levels[:, 0:-1] + (np.diff(sigma_levels, axis=1) / 2)
@@ -970,7 +990,7 @@ class Model(Domain):
         if noisy:
             # Should be present in all sigma files.
             print('nlev\t{:d}\n'.format(nlev))
-            print('sigtype\t{}\n'.format(sigtype))
+            print(f'sigtype\t{sigtype}\n')
 
             # Only present in geometric sigma files.
             if sigtype == 'GEOMETRIC':
@@ -980,11 +1000,11 @@ class Model(Domain):
             if sigtype == 'GENERALIZED':
                 print('du\t{:d}\n'.format(int(du)))
                 print('dl\t{:d}\n'.format(int(dl)))
-                print('min_constant_depth\t{}\n'.format(min_constant_depth))
+                print(f'min_constant_depth\t{min_constant_depth}\n')
                 print('ku\t{:d}\n'.format(int(ku)))
                 print('kl\t{:d}\n'.format(int(kl)))
-                print('zku\t{}\n'.format(zku))
-                print('zkl\t{}\n'.format(zkl))
+                print(f'zku\t{zku}\n')
+                print(f'zkl\t{zkl}\n')
 
         # Update the open boundaries.
         self._update_open_boundaries()
@@ -1027,56 +1047,43 @@ class Model(Domain):
         hmin = np.abs(hmin)
 
         # Check that the uniform --> generalised transition makes sense
-        if not hmin/(levels-1) == dl/kl or not hmin/(levels-1) == du/ku:
+        if hmin / (levels - 1) != dl / kl or hmin / (levels - 1) != du / ku:
             raise ValueError ('Uniform to generalised sigma layers are not matched')
 
-        if h > hmin:
+        if h <= hmin:
+            # Uniform for shallow areas
+            return self.sigma_geometric(levels, 1)
+
+        # Compile it into one set of dists
+        dist = [0]
             # Fixed layers for the top and bottom, can assume they are the same thickness as this
             # is checked above
-            if (len(zkl) + len(zku)) == 0:
-                perc_in_boundary = (dl + du)/h
-                layers_in_boundary = ku+kl
-                perc_per_layer_boundary = perc_in_boundary/layers_in_boundary 
+        if (len(zkl) + len(zku)) == 0:
+            perc_in_boundary = (dl + du)/h
+            layers_in_boundary = ku+kl
+            perc_per_layer_boundary = perc_in_boundary/layers_in_boundary 
 
-                # Uniform in between
-                perc_in_midlayer = (h - (dl+du)*(1-1/layers_in_boundary))/h # how much of the water column still to divvy up
-                layers_in_mid = levels - (ku + kl) - 1 # 0 m is defined
-                perc_per_layer_mid = perc_in_midlayer/layers_in_mid
-            
-                # Compile it into one set of dists
-                dist = [0]
-                for i in np.arange(1,ku + 1):
-                    dist.append(dist[-1] + perc_per_layer_boundary)
-                for i in np.arange(0, layers_in_mid):
-                    dist.append(dist[-1] + perc_per_layer_mid)
-                for i in np.arange(0, kl):
-                    dist.append(dist[-1] + perc_per_layer_boundary)
-                dist = np.asarray(dist) * -1
+            # Uniform in between
+            perc_in_midlayer = (h - (dl+du)*(1-1/layers_in_boundary))/h # how much of the water column still to divvy up
+            layers_in_mid = levels - (ku + kl) - 1 # 0 m is defined
+            perc_per_layer_mid = perc_in_midlayer/layers_in_mid
 
-            else:
-                perc_zku = zku / h
-                perc_zkl = zkl / h
-                # Uniform in between
-                layers_in_boundary = ku+kl
-                perc_in_midlayer = (h - (dl+du)*(1-1/layers_in_boundary))/h # how much of the water column still to divvy up
-                layers_in_mid = levels - (ku + kl) - 1 # 0 m is defined
-                perc_per_layer_mid = perc_in_midlayer/layers_in_mid
-            
-                # Compile it into one set of dists
-                dist = [0]
-                for i in np.arange(0,ku):
-                    dist.append(dist[-1] + perc_zku[i])
-                for i in np.arange(0, layers_in_mid):
-                    dist.append(dist[-1] + perc_per_layer_mid)
-                for i in np.arange(0, kl):
-                    dist.append(dist[-1] + perc_zkl[i])
-                dist = np.asarray(dist) * -1
-       
+            dist.extend(dist[-1] + perc_per_layer_boundary for _ in np.arange(1,ku + 1))
+            dist.extend(dist[-1] + perc_per_layer_mid for _ in np.arange(0, layers_in_mid))
+            dist.extend(dist[-1] + perc_per_layer_boundary for _ in np.arange(0, kl))
         else:
-            # Uniform for shallow areas
-            dist = self.sigma_geometric(levels, 1)
+            perc_zku = zku / h
+            perc_zkl = zkl / h
+            # Uniform in between
+            layers_in_boundary = ku+kl
+            perc_in_midlayer = (h - (dl+du)*(1-1/layers_in_boundary))/h # how much of the water column still to divvy up
+            layers_in_mid = levels - (ku + kl) - 1 # 0 m is defined
+            perc_per_layer_mid = perc_in_midlayer/layers_in_mid
 
-        return dist
+            dist.extend(dist[-1] + perc_zku[i] for i in np.arange(0,ku))
+            dist.extend(dist[-1] + perc_per_layer_mid for _ in np.arange(0, layers_in_mid))
+            dist.extend(dist[-1] + perc_zkl[i] for i in np.arange(0, kl))
+        return np.asarray(dist) * -1
 
     @staticmethod
     def sigma_geometric(levels, p_sigma):
@@ -1220,8 +1227,9 @@ class Model(Domain):
         self.sigma.transition_depth = optimised_depth
 
         if noisy:
-            print('Hmin found {} with a maximum error in vertical distribution of {} metres\n'.format(optimised_depth,
-                                                                                                      min_error))
+            print(
+                f'Hmin found {optimised_depth} with a maximum error in vertical distribution of {min_error} metres\n'
+            )
 
         # Calculate the sigma level distributions at each grid node.
         sigma_levels = np.empty((self.dims.node, self.dims.levels)) * np.nan
@@ -1295,14 +1303,10 @@ class Model(Domain):
         for k in range(ku + 2, levels - kl):
             z2[k] = z2[k - 1] - dr
 
-        kk = 0
-        for k in range(levels - kl + 1, levels):
-            kk += 1
+        for kk, k in enumerate(range(levels - kl + 1, levels), start=1):
             z2[k] = z2[k - 1] - (zkl[kk] / h)
 
-        zz = np.max(h * z0 - h * z2)
-
-        return zz
+        return np.max(h * z0 - h * z2)
 
     def write_sigma(self, sigma_file):
         """
@@ -1325,7 +1329,7 @@ class Model(Domain):
         with sigma_file.open('w') as f:
             # All types of sigma distribution have the two following lines.
             f.write('NUMBER OF SIGMA LEVELS = {:d}\n'.format(self.dims.levels))
-            f.write('SIGMA COORDINATE TYPE = {}\n'.format(self.sigma.type))
+            f.write(f'SIGMA COORDINATE TYPE = {self.sigma.type}\n')
             if self.sigma.type.lower() == 'generalized':
                 f.write('DU = {:4.1f}\n'.format(self.sigma.upper_layer_depth))
                 f.write('DL = {:4.1f}\n'.format(self.sigma.lower_layer_depth))
@@ -1372,16 +1376,13 @@ class Model(Domain):
         else:
             obc_nodes, types, _ = read_fvcom_obc(str(obc_file))
 
-            if boundary_sects == None:
+            if boundary_sects is None:
                 obc_nodes_list = [obc_nodes]
             else:
-                obc_nodes_list = []
-                for this_sect in boundary_sects:
-                    obc_nodes_list.append(obc_nodes[this_sect])
-
+                obc_nodes_list = [obc_nodes[this_sect] for this_sect in boundary_sects]
             types_all = np.zeros(len(self.grid.lon))
             types_all[obc_nodes] = types    
-        
+
             self.grid.open_boundary_nodes = obc_nodes_list
             self.grid.types = types_all
 
@@ -1456,9 +1457,11 @@ class Model(Domain):
             zeta[:, start_index:end_index] = boundary.tide.zeta
             start_index = end_index
 
-        globals = {'type': 'FVCOM TIME SERIES ELEVATION FORCING FILE',
-                   'title': 'TPXO tides',
-                   'history': 'File created using {} from PyFVCOM'.format(inspect.stack()[0][3])}
+        globals = {
+            'type': 'FVCOM TIME SERIES ELEVATION FORCING FILE',
+            'title': 'TPXO tides',
+            'history': f'File created using {inspect.stack()[0][3]} from PyFVCOM',
+        }
         dims = {'nobc': self.dims.open_boundary_nodes, 'time': 0, 'DateStrLen': 26}
 
         with WriteForcing(str(output_file), dims, global_attributes=globals, clobber=True, format=format, **kwargs) as elev:
@@ -1583,16 +1586,19 @@ class Model(Domain):
             uni_temperature = np.ma.zeros((temperature.shape[0], 
                     len(uni_nodes)))
             if ersem:
-                uni_ersem = {}
-                for variable in ersem:
-                    uni_ersem[variable] = np.ma.zeros((
-                            ersem[variable].shape[0], len(uni_nodes)))
+                uni_ersem = {
+                    variable: np.ma.zeros(
+                        (ersem[variable].shape[0], len(uni_nodes))
+                    )
+                    for variable in ersem
+                }
             if sediments:
-                uni_sediments = {}
-                for variable in sediments:
-                    uni_sediments[variable] = np.ma.zeros((
-                            sediments[variable].shape[0], len(uni_nodes)))
-
+                uni_sediments = {
+                    variable: np.ma.zeros(
+                        (sediments[variable].shape[0], len(uni_nodes))
+                    )
+                    for variable in sediments
+                }
             for ui, ni in enumerate(uni_nodes):
                 same_node = river_index[self.river.node == ni]
                 uni_flux[:, ui] = np.ma.sum(flux[:, same_node], axis=1)
@@ -1600,7 +1606,7 @@ class Model(Domain):
                 weight = np.zeros(np.shape(flux[:, same_node]))
                 for sn in range(len(same_node)):
                     weight[:, sn] = flux[:, same_node[sn]] / uni_flux[:, ui]
-                
+
                 # Weighted average based on time variable river flux
                 uni_salinity[:, ui] = np.ma.sum(salinity[:, same_node] 
                         * weight, axis=1)
@@ -1642,9 +1648,9 @@ class Model(Domain):
                               'Z6_c': 2.4 * fac,
                               'Z6_n': 0.0505 * fac,
                               'Z6_p': 0.0047 * fac}
-                for extra in extra_data:
+                for extra, value in extra_data.items():
                     if not hasattr(self.river, extra):
-                        setattr(self.river, extra, extra_data[extra])
+                        setattr(self.river, extra, value)
 
             if sediments:
                 for variable in sediments:

@@ -108,14 +108,10 @@ class ValidationDB(object):
             data = data[np.newaxis, :]
         else:
             no_rows, no_cols = data.shape
-        qs_string = '({})'.format(','.join('?' * no_cols))
+        qs_string = f"({','.join('?' * no_cols)})"
 
         # Format our optional column.
-        if column is not None:
-            column = '({})'.format(','.join(column))
-        else:
-            column = ''
-
+        column = f"({','.join(column)})" if column is not None else ''
         if no_rows > 1:
             self.c.executemany('insert or ignore into {tab} {col} values {val}'.format(tab=table_name, col=column, val=qs_string), data)
         elif no_rows == 1:
@@ -148,15 +144,15 @@ class ValidationDB(object):
 
         """
 
-        qry_string = 'select {} from {}'.format(select_str, table_name)
+        qry_string = f'select {select_str} from {table_name}'
         if inner_join_str:
-            qry_string += ' inner join {}'.format(inner_join_str)
+            qry_string += f' inner join {inner_join_str}'
         if where_str:
-            qry_string += ' where {}'.format(where_str)
+            qry_string += f' where {where_str}'
         if order_by_str:
-            qry_string += ' order by {}'.format(order_by_str)
+            qry_string += f' order by {order_by_str}'
         if group_by_str:
-            qry_string += ' group by {}'.format(group_by_str)
+            qry_string += f' group by {group_by_str}'
 
         return self.execute_sql(qry_string)
 
@@ -242,8 +238,7 @@ def plot_map(fvcom, tide_db_path, threshold=np.inf, legend=False, **kwargs):
     gauges_in_domain = []
     fvcom_nodes = []
     for gi, gauge in enumerate(gauge_locations):
-        river_index = fvcom.closest_node(gauge, threshold=threshold)
-        if river_index:
+        if river_index := fvcom.closest_node(gauge, threshold=threshold):
             gauge_id, gauge_dist  = tide_db.get_nearest_gauge_id(*gauge)
             times, data = tide_db.get_tidal_series(gauge_id, np.min(fvcom.time.datetime), np.max(fvcom.time.datetime))
             if not np.any(data):
@@ -303,8 +298,7 @@ def plot_tides(fvcom, db_name, threshold=500, figsize=(10, 10), **kwargs):
     gauges_in_domain = []
     fvcom_nodes = []
     for gi, gauge in enumerate(gauge_locations):
-        river_index = fvcom.closest_node(gauge, threshold=threshold)
-        if river_index:
+        if river_index := fvcom.closest_node(gauge, threshold=threshold):
             current_gauge = {}
             current_gauge['gauge_id'], current_gauge['gauge_dist'] = tide_db.get_nearest_gauge_id(*gauge)
             current_gauge['times'], current_gauge['data'] = tide_db.get_tidal_series(current_gauge['gauge_id'],
@@ -365,8 +359,7 @@ def plot_tides(fvcom, db_name, threshold=500, figsize=(10, 10), **kwargs):
 
 
 def _make_normal_tide_series(h_series):
-    height_series = h_series - np.mean(h_series)
-    return height_series
+    return h_series - np.mean(h_series)
 
 
 class ValidationReader():
@@ -700,18 +693,22 @@ class CtdDB(ValidationDB):
         start_year = start_date.year
         end_year = end_date.year
 
-        poss_stations = np.asarray(self.select_qry('Stations', 'yearStart >= {} and yearEnd <= {}'.format(start_year, end_year)))
-        
-        station_dt = np.asarray([dt.datetime.strptime(this_entry[3], '%Y-%m-%d %H:%M:%S') for this_entry in poss_stations])  
+        poss_stations = np.asarray(
+            self.select_qry(
+                'Stations', f'yearStart >= {start_year} and yearEnd <= {end_year}'
+            )
+        )
+
+        station_dt = np.asarray([dt.datetime.strptime(this_entry[3], '%Y-%m-%d %H:%M:%S') for this_entry in poss_stations])
         chosen_stations = np.logical_and(station_dt >=start_date, station_dt <= end_date)
         poss_stations = poss_stations[chosen_stations]
         station_dt = station_dt[chosen_stations]
 
         station_ll = np.asarray([[float(this_entry[2]), float(this_entry[1])]for this_entry in poss_stations])
 
-        outer_bnd_poly = get_boundary_polygons(filereader.grid.triangles)[0] 
+        outer_bnd_poly = get_boundary_polygons(filereader.grid.triangles)[0]
         domain_poly = sg.Polygon(np.asarray([filereader.grid.lon[outer_bnd_poly], filereader.grid.lat[outer_bnd_poly]]).T)
-        station_pts = [sg.Point(this_pt) for this_pt in station_ll] 
+        station_pts = [sg.Point(this_pt) for this_pt in station_ll]
         station_isin = [domain_poly.contains(this_pt) for this_pt in station_pts] 
 
         station_dt = station_dt[station_isin]
@@ -720,8 +717,8 @@ class CtdDB(ValidationDB):
 
         for i, this_str in enumerate(station_str):
             if this_str[0].isdigit():
-                station_str[i] = 'b{}'.format(this_str)
-        
+                station_str[i] = f'b{this_str}'
+
         return np.asarray(station_str), station_ll, station_dt
 
     def retreive_vars(self, station_str, var_name_list, ctd_table_cols=None):
@@ -821,24 +818,25 @@ class TideDB(ValidationDB):
         if isinstance(station_identifier, str):
             where_str = "st.site_tla = '" + station_identifier + "'"
         else:
-            where_str = "st.site_id = " + str(int(station_identifier))
+            where_str = f"st.site_id = {int(station_identifier)}"
 
         if start_date_dt is not None:
             start_sec = dt_to_epochsec(start_date_dt)
-            where_str += " and go.time_int >= " + str(start_sec)
+            where_str += f" and go.time_int >= {str(start_sec)}"
         if end_date_dt is not None:
             end_sec = dt_to_epochsec(end_date_dt)
-            where_str += " and go.time_int <= " + str(end_sec)
+            where_str += f" and go.time_int <= {str(end_sec)}"
         order_by_str = 'go.time_int'
-        return_data = self.select_qry(table_name, where_str, select_str, order_by_str, inner_join_str)
-        if not return_data:
-            print('No data available')
-            dates, data = None, None
-        else:
+        if return_data := self.select_qry(
+            table_name, where_str, select_str, order_by_str, inner_join_str
+        ):
             return_data = np.asarray(return_data)
             date_list = [epochsec_to_dt(this_time) for this_time in return_data[:, 0]]
             dates, data = np.asarray(date_list), return_data[:, 1:]
 
+        else:
+            print('No data available')
+            dates, data = None, None
         return dates, data
 
     def get_gauge_locations(self, long_names=False):
@@ -859,10 +857,7 @@ class TideDB(ValidationDB):
 
         """
         gauge_site_data = np.asarray(self.select_qry('sites', None))
-        if long_names:
-            tla_name = gauge_site_data[:, 2]
-        else:
-            tla_name = gauge_site_data[:, 1]
+        tla_name = gauge_site_data[:, 2] if long_names else gauge_site_data[:, 1]
         lon_lat = np.asarray(gauge_site_data[:, 3:5], dtype=float)
 
         return tla_name, lon_lat
@@ -894,11 +889,7 @@ class TideDB(ValidationDB):
             if this_dist < min_dist:
                 min_dist = this_dist
                 closest_gauge_id = this_row[0]
-        if min_dist >= threshold:
-            closest_gauge_id = None
-        else:
-            closest_gauge_id = int(closest_gauge_id)
-
+        closest_gauge_id = None if min_dist >= threshold else int(closest_gauge_id)
         return closest_gauge_id, min_dist
 
     def _add_sql_strings(self):
@@ -944,12 +935,7 @@ class BODCAnnualTideFile(object):
                 self.lat = [float(s) for s in this_line.split() if self._is_number(s)][0]
             if 'Site' in this_line:
                 site_str_raw = this_line.split()[1:]
-                if len(site_str_raw) == 1:
-                    site_str = site_str_raw[0]
-                else:
-                    site_str = ''
-                    for this_str in site_str_raw:
-                        site_str += this_str
+                site_str = site_str_raw[0] if len(site_str_raw) == 1 else ''.join(site_str_raw)
         self.site_name = site_str
         self.site_tla = file_name.split('/')[-1][4:7]
 
@@ -991,7 +977,7 @@ class BODCAnnualTideFile(object):
             meas = float(in_str)
         except:
             error_code_str = in_str[-1]
-            meas = float(in_str[0:-1])
+            meas = float(in_str[:-1])
             try:
                 error_code = error_code_dict[error_code_str]
             except:
@@ -1017,7 +1003,9 @@ class BODCAnnualTideFile(object):
         TODO: Add docstring
 
         """
-        sed_str = "sed -i '"+ str(header_length + 1) + ",$ {/^ *[0-9]/!d}' " + file_name
+        sed_str = (
+            f"sed -i '{str(header_length + 1)}" + ",$ {/^ *[0-9]/!d}' " + file_name
+        )
         sp.call([sed_str], shell=True)
 
 
@@ -1115,9 +1103,10 @@ class WCODB(ValidationDB):
         TODO: Add docstring
 
         """
-        epoch_sec_timelist = []
-        for this_time in file_obj.observation_dict['dt_time']:
-            epoch_sec_timelist.append(dt_to_epochsec(this_time))
+        epoch_sec_timelist = [
+            dt_to_epochsec(this_time)
+            for this_time in file_obj.observation_dict['dt_time']
+        ]
         buoy_id_list = np.tile(buoy_id, len(epoch_sec_timelist))
         measurement_id_list = np.tile(measurement_id, len(epoch_sec_timelist))
 
@@ -1138,22 +1127,22 @@ class WCODB(ValidationDB):
 
         if start_date_dt is not None:
             start_sec = dt_to_epochsec(start_date_dt)
-            where_str += " and go.time_int >= " + str(start_sec)
+            where_str += f" and go.time_int >= {str(start_sec)}"
         if end_date_dt is not None:
             end_sec = dt_to_epochsec(end_date_dt)
-            where_str += " and go.time_int <= " + str(end_sec)
+            where_str += f" and go.time_int <= {str(end_sec)}"
         order_by_str = 'go.time_int, go.depth'
 
-        return_data = self.select_qry(table_name, where_str, select_str, order_by_str, inner_join_str)
-
-        if not return_data:
-            dates, data = None, None
-            print('No data available')
-        else:
+        if return_data := self.select_qry(
+            table_name, where_str, select_str, order_by_str, inner_join_str
+        ):
             return_data = np.asarray(return_data)
             date_list = [epochsec_to_dt(this_time) for this_time in return_data[:, 0]]
             dates, data = np.asarray(date_list), return_data[:, 1:]
 
+        else:
+            dates, data = None, None
+            print('No data available')
         return dates, data
 
 
@@ -1181,7 +1170,7 @@ class WCOObsFile(object):
         temp_str = 'YKA123ASD'
         file_split_str = '''awk '/^[^0-9]/{g++} { print $0 > "''' + temp_str + '''"g".txt"}' temp_file.txt'''
         sp.call(file_split_str, shell=True)
-        temp_file_list = gb.glob(temp_str + '*')
+        temp_file_list = gb.glob(f'{temp_str}*')
 
         obs_dict_list = []
         for this_file in temp_file_list:
@@ -1224,7 +1213,7 @@ class WCOObsFile(object):
         for this_var, this_possible in self.possible_vars.items():
             if np.any(np.isin(this_possible, observations_header)):
                 this_col = np.where(np.isin(observations_header, this_possible))[0]
-                if this_var == 'time' or this_var =='date' or this_var=='Jd':
+                if this_var in ['time', 'date', 'Jd']:
                     observation_dict[this_var] = np.squeeze(np.asarray(observations_raw[:, this_col], dtype=str))
                     time_vars.append(this_possible[np.isin(this_possible, observations_header)])
                 else:
@@ -1253,15 +1242,27 @@ class WCOObsFile(object):
         """
         dt_list = []
         if np.any(np.isin('mm/dd/yyyy', time_vars)):
-            for this_time, this_date in zip(obs_dict['time'], obs_dict['date']):
-                dt_list.append(dt.datetime.strptime(this_date + ' ' + this_time, '%m/%d/%Y %H:%M:%S'))
+            dt_list.extend(
+                dt.datetime.strptime(
+                    this_date + ' ' + this_time, '%m/%d/%Y %H:%M:%S'
+                )
+                for this_time, this_date in zip(obs_dict['time'], obs_dict['date'])
+            )
         elif np.any(np.isin('Year', time_vars)):
-            for this_time, (this_jd, this_year) in zip(obs_dict['time'], zip(obs_dict['julian_day'], obs_dict['date'])):
-                dt_list.append(dt.datetime(int(this_year),1,1) + dt.timedelta(days=int(this_jd) -1) +
-                                dt.timedelta(hours=int(this_time.split('.')[0])) + dt.timedelta(minutes=int(this_time.split('.')[1])))
+            dt_list.extend(
+                dt.datetime(int(this_year), 1, 1)
+                + dt.timedelta(days=int(this_jd) - 1)
+                + dt.timedelta(hours=int(this_time.split('.')[0]))
+                + dt.timedelta(minutes=int(this_time.split('.')[1]))
+                for this_time, (this_jd, this_year) in zip(
+                    obs_dict['time'], zip(obs_dict['julian_day'], obs_dict['date'])
+                )
+            )
         elif np.any(np.isin(' Date (YYMMDD)', time_vars)):
-            for this_time, this_date in zip(obs_dict['time'], obs_dict['date']):
-                dt_list.append(dt.datetime.strptime(this_date + ' ' + this_time, '%y%m%d %H%M%S'))
+            dt_list.extend(
+                dt.datetime.strptime(this_date + ' ' + this_time, '%y%m%d %H%M%S')
+                for this_time, this_date in zip(obs_dict['time'], obs_dict['date'])
+            )
         else:
             print('Date parser not up to date with possible vars')
             dt_list = None
@@ -1285,15 +1286,15 @@ class WCOParseFile(WCOObsFile):
         self._setup_possible_vars()
 
         for this_file in all_files:
-            print('Processing file {}'.format(this_file))
+            print(f'Processing file {this_file}')
             try:
                 observation_dict_list.append(self._add_file(dirname + this_file, remove_undated=False))
-                date_str = '20' + this_file[0:2] + '-' + this_file[2:4] + '-' + this_file[4:6]
+                date_str = '20' + this_file[:2] + '-' + this_file[2:4] + '-' + this_file[4:6]
                 this_dt = dt.datetime.strptime(date_str, '%Y-%m-%d') + dt.timedelta(hours=12)
                 dt_list.append(np.tile(this_dt, len(observation_dict_list[-1]['temp'])))
 
             except ValueError:
-                print('Error in file {}'.format(this_file))
+                print(f'Error in file {this_file}')
         # Flatten the list of dictionaries to one dictionary
         self.observation_dict = {this_key: np.hstack([this_dict[this_key] for this_dict in observation_dict_list]) for this_key in observation_dict_list[0]}
         self.observation_dict['dt_time'] = np.hstack(dt_list)
@@ -1375,13 +1376,12 @@ class CompareICES(object):
 
         model_varkeys = []
         for this_key in self.var_keys:
-            this_model_key = self.ices_model_conversion[this_key] 
+            this_model_key = self.ices_model_conversion[this_key]
             if "+" in this_model_key:
                 vlist = this_model_key.split('+')
-                for v in vlist:
-                    model_varkeys.append(v)
+                model_varkeys.extend(iter(vlist))
             else:
-                model_varkeys.append(this_model_key)                   
+                model_varkeys.append(this_model_key)
         self.model_varkeys = model_varkeys
 
         self.zeta_filereader = FileReader(self.model_files[0], ['zeta'])
@@ -1452,20 +1452,20 @@ class CompareICES(object):
         # The dataframe is huge so skip through to the approriate start point
         while start_step_len >= end_step_len:
             start_index = self._year_start(np.min(self.zeta_filereader.time.datetime).year, start_index, start_step_len, df)
-            start_step_len = start_step_len/10
+            start_step_len /= 10
         df = df[int(start_index):]
 
         for n, sample in df.iterrows():
             if self.noisy:
-                print('ICES sample {}'.format(n))
+                print(f'ICES sample {n}')
 
             h = int(np.floor(sample['Hr']/100))
             sample_dt = dt.datetime(int(sample['Year']), int(sample['Mnth']), int(sample['Dy']), h, int(sample['Hr'] - h * 100))
             if sample_dt > np.max(self.zeta_filereader.time.datetime):
                 break
-            
+
             if self.lon_mm[0]<=sample['Longdeg']<=self.lon_mm[1] and self.lat_mm[0]<=sample['Latdeg']<=self.lat_mm[1] and \
-                                    sample_dt >= np.min(self.zeta_filereader.time.datetime):
+                                        sample_dt >= np.min(self.zeta_filereader.time.datetime):
 
                 if self.bnd_poly.contains_point(np.asarray([sample['Longdeg'], sample['Latdeg']])):
                     node_ind = self.zeta_filereader.closest_node([sample['Longdeg'], sample['Latdeg']], haversine=True)
@@ -1526,14 +1526,16 @@ class CompareICES(object):
         if len(self.ices_data['time_dt']) == 0:
             print('No ICES data loaded for comparison')
             return
-        
+
         current_modelfile_ind = 0
         current_modelfile_dt = [this_date.date() for this_date in FileReader(self.model_files[current_modelfile_ind]).time.datetime]
 
         unique_obs_days = np.unique([this_date.date() for this_date in self.ices_data['time_dt']])
         for counter_ind, this_day in enumerate(unique_obs_days):
             if self.noisy:
-                print('Getting model data from day {} of {}'.format(counter_ind +1, len(unique_obs_days)))
+                print(
+                    f'Getting model data from day {counter_ind + 1} of {len(unique_obs_days)}'
+                )
 
             if this_day > current_modelfile_dt[-1]:
                 current_modelfile_ind += 1
@@ -1556,9 +1558,12 @@ class CompareICES(object):
 
                         if "+" in this_model_key:
                             vlist = this_model_key.split('+')
-                            mbuffer = 0
-                            for v in vlist:
-                                mbuffer += getattr(this_day_fr.data, v)[time_ind, dep_ind, space_ind]
+                            mbuffer = sum(
+                                getattr(this_day_fr.data, v)[
+                                    time_ind, dep_ind, space_ind
+                                ]
+                                for v in vlist
+                            )
                             self.model_data[key][this_record_ind] = mbuffer
                         else:
                             self.model_data[key][this_record_ind] = getattr(this_day_fr.data, this_model_key)[time_ind, dep_ind, space_ind]
@@ -1596,11 +1601,7 @@ class CompareICES(object):
         TODO: Add docstring
 
         """
-        hasData=False
-        for key in self.var_keys:
-            if sample[key]>-8.999999:
-                hasData=True
-        return hasData
+        return any(sample[key]>-8.999999 for key in self.var_keys)
 
     @staticmethod
     def _checkDepth(z, dep_lays_choose):
@@ -1608,11 +1609,7 @@ class CompareICES(object):
         TODO: Add docstring
 
         """
-        if z>dep_lays_choose[-1]:
-            return -1
-        else:
-            k=((z-dep_lays_choose)**2).argmin()
-            return k
+        return -1 if z>dep_lays_choose[-1] else ((z-dep_lays_choose)**2).argmin()
 
     @staticmethod
     def _year_start(year_find, start_index, step, df):

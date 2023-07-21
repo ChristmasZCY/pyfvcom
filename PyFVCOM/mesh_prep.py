@@ -107,11 +107,8 @@ def poly_normals(poly_pts):
     if not clockwise:
         poly_pts = np.flipud(poly_pts)
 
-    unit_normal_vecs = []
-
     this_normal_vec = [-(poly_pts[1,1] - poly_pts[-1,1]), (poly_pts[1,0] - poly_pts[-1,0])]
-    unit_normal_vecs.append(this_normal_vec/np.linalg.norm(this_normal_vec))
-
+    unit_normal_vecs = [this_normal_vec / np.linalg.norm(this_normal_vec)]
     for i in np.arange(1, len(poly_pts) -1):
         this_normal_vec = [-(poly_pts[i+1,1] - poly_pts[i-1,1]), (poly_pts[i+1,0] - poly_pts[i-1,0])]
         unit_normal_vecs.append(this_normal_vec/np.linalg.norm(this_normal_vec))
@@ -129,10 +126,7 @@ def check_poly_clockwise(poly_pts):
     for i in np.arange(0, len(poly_pts)-1):
         shoelace_sum += (poly_pts[i+1,0] - poly_pts[i,0])*(poly_pts[i+1,1] + poly_pts[i,1])   
 
-    if shoelace_sum > 0:
-        return True
-    else:
-        return False
+    return shoelace_sum > 0
 
 
 
@@ -144,40 +138,35 @@ def close_channels(modified_boundary_poly, islands_dict, resolution, remove_smal
     """
 
     ## Simplify the islands first so there are (hopefully!) less things to intersect with the boundary
-    
+
     # Convert into polygons, remove any with area < resolution^2 as they are too tiny to consider, and buffer    
     poly_islands = {}
     islands_to_process = []
     counter = 0
     for this_island in islands_dict.values():
-        this_poly = sg.Polygon(this_island)        
-        if not remove_small_islands_first:
+        this_poly = sg.Polygon(this_island)
+        if not remove_small_islands_first or this_poly.area > resolution**2:
             poly_islands[counter] = this_poly.buffer(resolution)
             islands_to_process.append(counter)
             counter += 1
-        elif this_poly.area > resolution**2:
-            poly_islands[counter] = this_poly.buffer(resolution)
-            islands_to_process.append(counter)
-            counter += 1
-
-    bdry_poly = sg.Polygon(modified_boundary_poly)    
+    bdry_poly = sg.Polygon(modified_boundary_poly)
     poly_islands[counter] = bdry_poly.buffer(resolution)
     islands_to_process.append(counter)
     counter += 1
 
     # Loop over polygons, if they intersect then merge (and remove holes) and put at the bottom of the list
 
-    while len(islands_to_process) > 0:
+    while islands_to_process:
         this_process = islands_to_process.pop(0)
         this_island = poly_islands[this_process]
 
         for this_comp_island in islands_to_process:
             if this_island.intersects(poly_islands[this_comp_island]):
                 new_island = this_island.union(poly_islands[this_comp_island])
-                
+
                 # Check for holes
 
-                               
+
                 islands_to_process.remove(this_comp_island)
                 poly_islands.pop(this_process)
                 poly_islands.pop(this_comp_island)              
@@ -186,8 +175,8 @@ def close_channels(modified_boundary_poly, islands_dict, resolution, remove_smal
                 poly_islands[counter] = new_island
                 counter += 1                
                 break
-    
-        print('Island {} of {} processed'.format(this_process, counter))
+
+        print(f'Island {this_process} of {counter} processed')
 
     new_islands = {}
     counter = 0
@@ -208,11 +197,11 @@ def close_channels(modified_boundary_poly, islands_dict, resolution, remove_smal
             bdry_poly_key = this_key
 
     new_bdry = new_islands.pop(bdry_poly_key)
-    
-    new_islands_xy = {}
-    for this_key, this_poly in new_islands.items():
-        new_islands_xy[this_key] = np.asarray(this_poly.exterior.xy).T
 
+    new_islands_xy = {
+        this_key: np.asarray(this_poly.exterior.xy).T
+        for this_key, this_poly in new_islands.items()
+    }
     new_bdry_xy = np.asarray(new_bdry.exterior.xy).T
 
     return new_bdry_xy, new_islands_xy

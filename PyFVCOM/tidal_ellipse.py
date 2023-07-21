@@ -382,17 +382,14 @@ def get_BE(g, alpha, h, z, nu, kappa):
             B = B * ah * ah / (t2 - 1) / (t2 - 2)
             series_sum = series_sum + A * B
 
-        BE = C*series_sum
+        return C*series_sum
 
-    # Finite solution
     else:
         c = -g * h * h / nu
         denom = (np.exp(az - ah) + np.exp(-(az + ah))) / (1 + np.exp(-2 * ah))
 
         numer = 1 + anu_k * np.tanh(ah)
-        BE = c * ((1 - denom / numer) / (ah * ah))
-
-    return BE
+        return c * ((1 - denom / numer) / (ah * ah))
 
 
 def sub2ind(shape, pos):
@@ -432,17 +429,9 @@ def plot_ell(SEMA, ECC, INC, PHA, IND=[1]):
     len_IND = len(IND)
     if IND:
         cmd = 'sub2ind(size_SEMA, '
-        if len_IND == 1:
-            titletxt = 'Ellipse '
-        else:
-            titletxt = 'Ellipse ('
-
+        titletxt = 'Ellipse ' if len_IND == 1 else 'Ellipse ('
         for k in range(len_IND):
-            if k == 0:
-                cmd = cmd + '[' + str(IND[k])
-            else:
-                cmd = cmd + ',' + str(IND[k])
-
+            cmd = f'{cmd}[{str(IND[k])}' if k == 0 else f'{cmd},{str(IND[k])}'
             if k < len_IND-1:
                 titletxt = titletxt + str(IND[k]) + ','
             elif len_IND == 1:
@@ -450,14 +439,14 @@ def plot_ell(SEMA, ECC, INC, PHA, IND=[1]):
             else:
                 titletxt = titletxt + str(IND[k]) + ')'
 
-        cmd = 'n = ' + cmd + '])'
+        cmd = f'n = {cmd}])'
         # This is pretty nasty, but it works.
         exec(cmd)
 
         plt.gcf()
         plt.clf()
         do_the_plot(SEMA.flatten()[n], ECC.flatten()[n], INC.flatten()[n], PHA.flatten()[n])
-        titletxt = titletxt + ',  (red) green (anti-) clockwise component'
+        titletxt = f'{titletxt},  (red) green (anti-) clockwise component'
         plt.title(titletxt)
     elif len_IND:
         print('IND input contains zero element(s)!\nNo ellipse will be plotted.')

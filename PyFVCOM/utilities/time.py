@@ -86,10 +86,7 @@ def julian_day(gregorianDateTime, mjd=False):
             modified[ii] += (hour[ii] + (minute[ii] / 60.0) + (second[ii] / 3600.0)) / 24.0
             julian[ii] += modified[ii]
 
-    if mjd:
-        return modified
-    else:
-        return julian
+    return modified if mjd else julian
 
 
 def gregorian_date(julianDay, mjd=False):
@@ -238,7 +235,9 @@ def common_time(times1, times2):
 
     """
     if len(times1) < 3 or len(times2) < 3:
-        raise ValueError('Too few times for an overlap (times1 = {}, times2 = {})'.format(len(times1), len(times2)))
+        raise ValueError(
+            f'Too few times for an overlap (times1 = {len(times1)}, times2 = {len(times2)})'
+        )
 
     # Check our times overlap at all and if not, return a couple of Falses.
     latest_start, earliest_end = False, False
@@ -275,9 +274,9 @@ def make_signal(time, amplitude=1, phase=0, period=1):
 
     """
 
-    signal = (amplitude * np.sin((2 * np.pi * 1 / period * (time - np.min(time)) + np.deg2rad(phase))))
-
-    return signal
+    return amplitude * np.sin(
+        (2 * np.pi * 1 / period * (time - np.min(time)) + np.deg2rad(phase))
+    )
 
 
 def ramped_signal(start, end, time_interval, signal_start, signal_end, min_rate, max_rate, ramp_duration):
@@ -332,8 +331,10 @@ def ramped_signal(start, end, time_interval, signal_start, signal_end, min_rate,
 
     t = []
     for d in np.arange(run_duration):
-        for h in np.arange(0, 1 - time_interval, time_interval):
-            t.append(start_datetime + timedelta(days=float(d), hours=float(h) * 24.0))
+        t.extend(
+            start_datetime + timedelta(days=float(d), hours=float(h) * 24.0)
+            for h in np.arange(0, 1 - time_interval, time_interval)
+        )
     # Add the end of the requested period to the list and convert to array.
     t.append(end_datetime)
     t = np.asarray(t)

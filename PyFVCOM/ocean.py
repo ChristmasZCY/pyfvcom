@@ -99,23 +99,6 @@ def _tests():
     res_z2 = pressure2depth(test_p, test_lat)
     res_p2 = depth2pressure(res_z2, test_lat)
 
-    # Graph the differences
-    if False:
-        fig0 = plt.figure(figsize=(12, 10))
-        ax0 = fig0.add_subplot(1, 2, 1)
-        ax0.loglog(test_z, res_z1 - test_z, '.')
-        ax0.set_xlabel('Depth (m)')
-        ax0.set_ylabel('Difference (m)')
-        ax0.set_title('depth2pressure <-> pressure2depth')
-
-        ax1 = fig0.add_subplot(1, 2, 2)
-        ax1.loglog(test_p, res_p2 - test_p, '.')
-        ax1.set_xlabel('Pressure (dbar)')
-        ax1.set_ylabel('Difference (dbar)')
-        ax1.set_title('pressure2depth <-> depth2pressure ')
-
-        fig0.show()
-
     # Input parameters
     test_t = np.array(40)
     test_s = np.array(40)
@@ -136,23 +119,35 @@ def _tests():
 
     # Use some of the Fofonoff and Millard (1983) checks.
     res_svan = sw_svan(test_t, test_s, test_p)
-    print('Steric anomaly\nFofonoff and Millard (1983):\t9.8130210e-6\nsw_svan:\t\t\t{}\n'.format(res_svan))
+    print(
+        f'Steric anomaly\nFofonoff and Millard (1983):\t9.8130210e-6\nsw_svan:\t\t\t{res_svan}\n'
+    )
 
     res_z = pressure2depth(test_p, test_lat)
-    print('Pressure to depth\nFofonoff and Millard (1983):\t9712.653\npressure2depth:\t\t\t{}\n'.format(res_z))
+    print(
+        f'Pressure to depth\nFofonoff and Millard (1983):\t9712.653\npressure2depth:\t\t\t{res_z}\n'
+    )
 
     # The return to depth is a bit inaccurate, not sure why.
     res_pres = depth2pressure(res_z, test_lat)
-    print('Depth to pressure\nFofonoff and Millar (1983):\t9712.653\ndepth2pressure:\t\t\t{}\n'.format(res_pres))
+    print(
+        f'Depth to pressure\nFofonoff and Millar (1983):\t9712.653\ndepth2pressure:\t\t\t{res_pres}\n'
+    )
 
     res_cp = cp_sw(test_t, test_s, test_p)
-    print('Specific heat of seawater\nFofonoff and Millard (1983):\t3849.500\ncp_sw:\t\t\t\t{}\n'.format(res_cp))
+    print(
+        f'Specific heat of seawater\nFofonoff and Millard (1983):\t3849.500\ncp_sw:\t\t\t\t{res_cp}\n'
+    )
 
     res_atg = dT_adiab_sw(test_t, test_s, test_p)
-    print('Adiabatic temperature gradient\nFofonoff and Millard (1983):\t0.0003255976\ndT_adiab_sw:\t\t\t{}\n'.format(res_atg))
+    print(
+        f'Adiabatic temperature gradient\nFofonoff and Millard (1983):\t0.0003255976\ndT_adiab_sw:\t\t\t{res_atg}\n'
+    )
 
     res_theta = theta_sw(test_t, test_s, test_p, test_pr)
-    print('Potential temperature\nFofonoff and Millard (1983):\t36.89073\ntheta_sw:\t\t\t{}\n'.format(res_theta))
+    print(
+        f'Potential temperature\nFofonoff and Millard (1983):\t36.89073\ntheta_sw:\t\t\t{res_theta}\n'
+    )
 
     # Haven't got the right input values for sal78 and sw_salinity, but the
     # outputs match the MATLAB functions, so I'm assuming they're OK...
@@ -160,7 +155,9 @@ def _tests():
     # print('Salinity\nFofonoff and Millard (1983):\t40\nsw_salinity:\t\t\t{}\n'.format(res_salinity))
 
     res_sal78 = sw_sal78(test_c, test_t, test_p)
-    print('Salinity\nFofonoff and Millard (1983):\t40\nsw_sal78:\t\t\t{}\n'.format(res_sal78))
+    print(
+        f'Salinity\nFofonoff and Millard (1983):\t40\nsw_sal78:\t\t\t{res_sal78}\n'
+    )
 
     # Haven't got the right input values for sal78 and sw_salinity, but the
     # outputs match the MATLAB functions, so I'm assuming they're OK...
@@ -169,16 +166,24 @@ def _tests():
     # print('Salinity\nFofonoff and Millard (1983):\t40\nsw_sal80:\t\t\t{}\n'.format(res_sal80))
 
     res_dens = dens_jackett(test_td, test_sd, test_pd)
-    print('Jackett density\nJackett et al. (2005):\t1017.728868019642\ndens_jackett:\t\t{}\n'.format(res_dens))
+    print(
+        f'Jackett density\nJackett et al. (2005):\t1017.728868019642\ndens_jackett:\t\t{res_dens}\n'
+    )
 
     res_salt = cond2salt(test_cond)
-    print('Conductivity to salinity\nUSGS:\t\t0.046,\t\t\t44.016\ncond2salt:\t{},\t{}'.format(res_salt[0], res_salt[1]))
+    print(
+        f'Conductivity to salinity\nUSGS:\t\t0.046,\t\t\t44.016\ncond2salt:\t{res_salt[0]},\t{res_salt[1]}'
+    )
 
     res_stokes, res_u_star, res_delta = stokes(test_h, test_U, test_omega, test_z0, U_star=True, delta=True)
-    print('Stokes number\nSouza (2013):\tS:\tTEST\tstokes:\tS:{}\n\t\t\tSouza (2013):\tU*:\tTEST\t{}\n\t\t\tSouza (2013):\tdelta:\tTEST\t{}\n'.format(res_stokes, res_u_star, res_delta))
+    print(
+        f'Stokes number\nSouza (2013):\tS:\tTEST\tstokes:\tS:{res_stokes}\n\t\t\tSouza (2013):\tU*:\tTEST\t{res_u_star}\n\t\t\tSouza (2013):\tdelta:\tTEST\t{res_delta}\n'
+    )
 
     res_dissipation = dissipation(test_rho, test_U)
-    print('Tidal dissipation\nKnown good:\t0.0400390625\ndissipation():\t{}'.format(res_dissipation))
+    print(
+        f'Tidal dissipation\nKnown good:\t0.0400390625\ndissipation():\t{res_dissipation}'
+    )
 
     valid_rhum = np.array((487.36529085, 270.83391406, 160.16590946, 100.0, 65.47545095, 44.70251971, 31.67003471))
     calculated_rhum = rhum(test_dew, test_temp)
@@ -212,9 +217,7 @@ def pressure2depth(p, lat):
     x = np.sin(lat / 57.29578)**2
     g = 9.780318 * (1.0 + (5.2788e-3 + 2.36e-5 * x) * x) + 1.092e-6 * p
 
-    z = ((((-1.82e-15 * p + 2.279e-10) * p - 2.2512e-5 ) * p + 9.72659) * p) / g
-
-    return z
+    return ((((-1.82e-15 * p + 2.279e-10) * p - 2.2512e-5 ) * p + 9.72659) * p) / g
 
 
 def depth2pressure(z, lat):
@@ -246,9 +249,7 @@ def depth2pressure(z, lat):
     Y = np.sin(np.deg2rad(np.abs(lat)))
     c1 = (5.92 + (5.25 * Y**2.0)) * 1.e-3
 
-    p = ((1.0 - c1) - np.sqrt((1.0 - c1)**2.0 - (4.0 * c2 * pz))) / (2.0 * c2)
-
-    return p
+    return ((1.0 - c1) - np.sqrt((1.0 - c1)**2.0 - (4.0 * c2 * pz))) / (2.0 * c2)
 
 
 def dT_adiab_sw(t, s, p):
@@ -296,11 +297,17 @@ def dT_adiab_sw(t, s, p):
 
     T68 = t * c68  # convert to 1968 temperature scale
 
-    atg = a0 + (a1 + (a2 + a3 * T68) * T68) * T68 + (b0 + b1 * T68) * (s - 35) + \
-            ((c0 + (c1 + (c2 + c3 * T68) * T68) * T68) + (d0 + d1 * T68) *
-            (s - 35)) * p + (e0 + (e1 + e2 * T68) * T68) * p * p
-
-    return atg
+    return (
+        a0
+        + (a1 + (a2 + a3 * T68) * T68) * T68
+        + (b0 + b1 * T68) * (s - 35)
+        + (
+            (c0 + (c1 + (c2 + c3 * T68) * T68) * T68)
+            + (d0 + d1 * T68) * (s - 35)
+        )
+        * p
+        + (e0 + (e1 + e2 * T68) * T68) * p * p
+    )
 
 
 def theta_sw(t, s, p, pr):
@@ -381,19 +388,19 @@ def cp_sw(t, s, p):
     # Check for values outside the valid ranges.
     if t.min() < -2:
         n = np.sum(t < -2)
-        print('WARNING: {} values below minimum value temperature (-2C)'.format(n))
+        print(f'WARNING: {n} values below minimum value temperature (-2C)')
 
     if t.max() > 40:
         n = np.sum(t > 40)
-        print('WARNING: {} values above maximum value temperature (40C)'.format(n))
+        print(f'WARNING: {n} values above maximum value temperature (40C)')
 
     if s.min() < 0:
         n = np.sum(s < 0)
-        print('WARNING: {} values below minimum salinity value (0 PSU)'.format(n))
+        print(f'WARNING: {n} values below minimum salinity value (0 PSU)')
 
     if s.max() > 42:
         n = np.sum(s > 42)
-        print('WARNING: {} values above maximum salinity value (42C)'.format(n))
+        print(f'WARNING: {n} values above maximum salinity value (42C)')
 
     # Convert from decibar to bar and temperature to the 1968 temperature scale.
     pbar = p / 10.0
@@ -480,9 +487,7 @@ def cp_sw(t, s, p):
             (g0 * s**1.5))) + (pbar**3 * ((s * (h0 + (h1 * T1) + (h2 * T2))) +
             (j1 * T1 * s**1.5)))
 
-    cp = cp_st0 + d1_cp + d2_cp
-
-    return(cp)
+    return cp_st0 + d1_cp + d2_cp
 
 
 def sw_smow(t):
@@ -511,10 +516,14 @@ def sw_smow(t):
 
     T68 = t * c68
 
-    dens = a0 + (a1 * T68) + (a2 * T68**2) + (a3 * T68**3) \
-            + (a4 * T68**4) + (a5 * T68**5)
-
-    return dens
+    return (
+        a0
+        + (a1 * T68)
+        + (a2 * T68**2)
+        + (a3 * T68**3)
+        + (a4 * T68**4)
+        + (a5 * T68**5)
+    )
 
 
 def sw_dens0(t, s):
@@ -634,10 +643,7 @@ def sw_seck(t, s, p):
     K0 = KW + s * (f0 + (f1 * T68) + (f2 * T68**2) + (f3 * T68**3)) + \
             s**1.5 * (g0 + (g1 * T68) + (g2 * T68**2))
 
-    # K at t, s, p
-    K = K0 + (A * Patm) + (B * Patm**2)  # Equation 15
-
-    return K
+    return K0 + (A * Patm) + (B * Patm**2)
 
 
 def sw_dens(t, s, p):
@@ -670,34 +676,32 @@ def sw_dens(t, s, p):
     # Check for values outside the valid ranges.
     if t.min() < -2:
         n = np.sum(t < -2)
-        print('WARNING: {} values below minimum value temperature (-2C)'.format(n))
+        print(f'WARNING: {n} values below minimum value temperature (-2C)')
 
     if t.max() > 40:
         n = np.sum(t > 40)
-        print('WARNING: {} values above maximum value temperature (40C)'.format(n))
+        print(f'WARNING: {n} values above maximum value temperature (40C)')
 
     if s.min() < 0:
         n = np.sum(s < 0)
-        print('WARNING: {} values below minimum salinity value (0 PSU)'.format(n))
+        print(f'WARNING: {n} values below minimum salinity value (0 PSU)')
 
     if s.max() > 42:
         n = np.sum(s > 42)
-        print('WARNING: {} values above maximum salinity value (42C)'.format(n))
+        print(f'WARNING: {n} values above maximum salinity value (42C)')
 
     if p.min() < 0:
         n = np.sum(p < 0)
-        print('WARNING: {} values below minimum pressure value (0 decibar)'.format(n))
+        print(f'WARNING: {n} values below minimum pressure value (0 decibar)')
 
     if p.max() > 10000:
         n = np.sum(p > 10000)
-        print('WARNING: {} values above maximum pressure value (10000 decibar)'.format(n))
+        print(f'WARNING: {n} values above maximum pressure value (10000 decibar)')
 
     dens0 = sw_dens0(t, s)
     k = sw_seck(t, s, p)
     Patm = p / 10.0  # pressure in bars
-    rho = dens0 / (1 - Patm / k)
-
-    return rho
+    return dens0 / (1 - Patm / k)
 
 
 def sw_svan(t, s, p):
@@ -723,9 +727,7 @@ def sw_svan(t, s, p):
 
     rho = sw_dens(t, s, p)
     rho0 = sw_dens(np.zeros(p.shape), np.ones(p.shape) * 35.0, p)
-    svan = (1 / rho) - (1 / rho0)
-
-    return svan
+    return (1 / rho) - (1 / rho0)
 
 
 def sw_sal78(c, t, p):
@@ -871,9 +873,7 @@ def dens_jackett(th, s, p=None):
                 pth * (th2 * 2.4461698007024582e-17 +
                 p * 9.1534417604289062e-18))
 
-    dens = anum/aden
-
-    return dens
+    return anum/aden
 
 
 def cond2salt(cond):
@@ -907,15 +907,14 @@ def cond2salt(cond):
     # (salinity equals 35) at 25 Celsius (53.087 millisiemens per centimetre).
     R = cond / (53.087 * 1000)  # convert from milli to micro
 
-    salt = \
-            k1 + \
-            (k2 * np.power(R, 1/2.0)) + \
-            (k3 * R) + \
-            (k4 * np.power(R, 3/2.0)) + \
-            (k5 * np.power(R, 2)) + \
-            (k6 * np.power(R, 5/2.0))
-
-    return salt
+    return (
+        k1
+        + (k2 * np.power(R, 1 / 2.0))
+        + (k3 * R)
+        + (k4 * np.power(R, 3 / 2.0))
+        + (k5 * np.power(R, 2))
+        + (k6 * np.power(R, 5 / 2.0))
+    )
 
 
 def zbar(data, levels):

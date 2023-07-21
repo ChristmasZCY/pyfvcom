@@ -79,7 +79,6 @@ class Residuals(object):
                 else:
                     # We need to interpolate.
                     print('On my todo list...')
-                    pass
             elif _inc_fvcom < _inc_predicted:
                 skip = int(_inc_predicted / _inc_fvcom)
                 _new_time = self._fvcom.time.datetime[::skip]
@@ -92,8 +91,6 @@ class Residuals(object):
                 else:
                     # We need to interpolate.
                     print('On my todo list...')
-                    pass
-
         # Now make a common time variable for use throughout (self._pred and self._fvcom should be identical in
         # length now).
         self.time = copy.copy(self._fvcom.time)
@@ -106,7 +103,9 @@ class Residuals(object):
         # Cap the speed vectors at some maximum value for the quiver plots.
         if self._max_speed and 'instantaneous' in self._max_speed:
             if self._noisy:
-                print('Capping maximum residual speed to {}m/s'.format(self._max_speed['instantaneous']))
+                print(
+                    f"Capping maximum residual speed to {self._max_speed['instantaneous']}m/s"
+                )
             self.speed = self._clip(self.speed, self._max_speed['instantaneous'])
 
         # Make the components after we've clipped so our plots look nice.
@@ -193,7 +192,7 @@ class Residuals(object):
 
             if 'monthly' in self._max_speed:
                 if self._noisy:
-                    print('Capping monthly residuals to {} m/s'.format(self._max_speed['monthly']))
+                    print(f"Capping monthly residuals to {self._max_speed['monthly']} m/s")
                 self.monthly.speed = self._clip(self.monthly.speed, self._max_speed['monthly'])
             # Make the components after we've clipped so our plots look nice.
             self.monthly.u_res = np.sin(np.deg2rad(self.monthly.direction)) * self.monthly.speed
@@ -362,7 +361,7 @@ def residual_flow(FVCOM, idxRange=False, checkPlot=False, noisy=False):
 
     for hh in range(nLayers):
         if noisy:
-            print('Layer {} of {}'.format(hh + 1, nLayers))
+            print(f'Layer {hh + 1} of {nLayers}')
 
         try:
             # 3D
@@ -377,7 +376,7 @@ def residual_flow(FVCOM, idxRange=False, checkPlot=False, noisy=False):
             # Create progressive vectors for all time steps in the current layer
             if noisy:
                 if ii == 0 or np.mod(ii, 99) == 0:
-                    print('Create PVD at time step {} of {}'.format(ii + 1, nTimeSteps))
+                    print(f'Create PVD at time step {ii + 1} of {nTimeSteps}')
 
             uRes[ii, hh, :] = uRes[ii, hh, :] + (uSum[ii, hh, :] * (dt * toSecFactor))
             vRes[ii, hh, :] = vRes[ii, hh, :] + (vSum[ii, hh, :] * (dt * toSecFactor))
@@ -397,7 +396,7 @@ def residual_flow(FVCOM, idxRange=False, checkPlot=False, noisy=False):
     # Plot to check everything's OK
     if checkPlot:
         if noisy:
-            print('Plotting element {}'.format(checkPlot - 1))
+            print(f'Plotting element {checkPlot - 1}')
 
         elmt = checkPlot - 1
         lyr = 0
@@ -513,9 +512,7 @@ def vorticity(fvcom, depth_averaged=False):
                                  + np.multiply(a2u[2, ...].T, data_u[time_index, ..., n2]).T
                                  + np.multiply(a2u[3, ...].T, data_u[time_index, ..., n3]).T)
 
-    vort = dvdx - dudy
-
-    return vort
+    return dvdx - dudy
 
 
 def ebb_flood(u, v, time, time_start=None, time_end=None):

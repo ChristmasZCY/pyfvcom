@@ -8,6 +8,7 @@ refuses to do coordinate conversions outside a single zone.
 
 """
 
+
 from __future__ import division
 
 import re
@@ -19,7 +20,7 @@ import pyproj
 from warnings import warn
 
 # Convert a string, tuple, float or int to a list.
-to_list = lambda x: [x] if isinstance(x, str) or isinstance(x, (float, int, np.float32)) else x
+to_list = lambda x: [x] if isinstance(x, (str, float, int, np.float32)) else x
 
 
 def __test(inLat, inLong, inZone=False):
@@ -58,7 +59,9 @@ def __convert(args):
 
     """
     a, b, zone, ellipsoid, datum, inverse = args
-    projection = pyproj.Proj("+proj=utm +zone={} +ellps={} +datum={} +units=m +no_defs".format(zone, ellipsoid, datum))
+    projection = pyproj.Proj(
+        f"+proj=utm +zone={zone} +ellps={ellipsoid} +datum={datum} +units=m +no_defs"
+    )
     c, d = projection(a, b, inverse=inverse)
 
     return c, d
@@ -116,10 +119,7 @@ def _get_zone_letter(latitude):
 
     ZONE_LETTERS = "CDEFGHJKLMNPQRSTUVWXX"
 
-    if -80 <= latitude <= 84:
-        return ZONE_LETTERS[int(latitude + 80) >> 3]
-    else:
-        return None
+    return ZONE_LETTERS[int(latitude + 80) >> 3] if -80 <= latitude <= 84 else None
 
 
 def utm_from_lonlat(lon, lat, zone=None, ellipsoid='WGS84', datum='WGS84', parallel=False):
@@ -212,7 +212,7 @@ def utm_from_lonlat(lon, lat, zone=None, ellipsoid='WGS84', datum='WGS84', paral
         results = np.asarray(results)
         eastings, northings = results[:, 0], results[:, 1]
         pool.close()
-    elif npos > 1 and not parallel:
+    elif npos > 1:
         eastings, northings = [], []
         for pos in zip(lon, lat, zone, [ellipsoid] * npos, [datum] * npos, [inverse] * npos):
             result = __convert(pos)
@@ -289,7 +289,7 @@ def lonlat_from_utm(eastings, northings, zone, ellipsoid='WGS84', datum='WGS84',
         results = np.asarray(results)
         lon, lat = results[:, 0], results[:, 1]
         pool.close()
-    elif npos > 1 and not parallel:
+    elif npos > 1:
         lon, lat = [], []
         for pos in zip(eastings, northings, zone, [ellipsoid] * npos, [datum] * npos, [inverse] * npos):
             result = __convert(pos)
@@ -435,30 +435,34 @@ if __name__ == '__main__':
     print('\nTest with NumPy single values')
     latTest, lonTest = 50, -5
     z, e, n, outLat, outLong = __test(latTest, lonTest)
-    print("Input (lat/long): {}, {}\nOutput (lat/long): {} {}".format(
-        latTest, lonTest, outLat, outLong))
-    print("Intermediate UTM: {}, {}".format(e, n))
+    print(
+        f"Input (lat/long): {latTest}, {lonTest}\nOutput (lat/long): {outLat} {outLong}"
+    )
+    print(f"Intermediate UTM: {e}, {n}")
 
     print('\nTest with lists')
     latTest, lonTest = [50, 55], [-5, -20]
     z, e, n, outLat, outLong = __test(latTest, lonTest)
     for c in range(len(latTest)):
-        print("Input (lat/long): {}, {}\nOutput (lat/long): {} {}".format(
-            latTest[c], lonTest[c], outLat[c], outLong[c]))
-        print("Intermediate UTM: {}, {}".format(e[c], n[c]))
+        print(
+            f"Input (lat/long): {latTest[c]}, {lonTest[c]}\nOutput (lat/long): {outLat[c]} {outLong[c]}"
+        )
+        print(f"Intermediate UTM: {e[c]}, {n[c]}")
 
     print('\nTest with NumPy arrays')
     latTest, lonTest = np.asarray([50, 55]), np.asarray([-5, -20])
     z, e, n, outLat, outLong = __test(latTest, lonTest)
     for c in range(len(latTest)):
-        print("Input (lat/long): {}, {}\nOutput (lat/long): {} {}".format(
-            latTest[c], lonTest[c], outLat[c], outLong[c]))
-        print("Intermediate UTM: {}, {}".format(e[c], n[c]))
+        print(
+            f"Input (lat/long): {latTest[c]}, {lonTest[c]}\nOutput (lat/long): {outLat[c]} {outLong[c]}"
+        )
+        print(f"Intermediate UTM: {e[c]}, {n[c]}")
 
     print('\nTest with NumPy arrays but a single zone')
     latTest, lonTest = np.asarray([50, 55]), np.asarray([-5, -20])
     z, e, n, outLat, outLong = __test(latTest, lonTest, inZone=30)
     for c in range(len(latTest)):
-        print("Input (lat/long): {}, {}\nOutput (lat/long): {} {}".format(
-            latTest[c], lonTest[c], outLat[c], outLong[c]))
-        print("Intermediate UTM: {}, {}".format(e[c], n[c]))
+        print(
+            f"Input (lat/long): {latTest[c]}, {lonTest[c]}\nOutput (lat/long): {outLat[c]} {outLong[c]}"
+        )
+        print(f"Intermediate UTM: {e[c]}, {n[c]}")

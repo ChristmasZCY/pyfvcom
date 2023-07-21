@@ -113,7 +113,7 @@ def get_CTD_data(db, table, fields, noisy=False):
                            ' is unavailable.')
 
     if noisy:
-        print('Getting data for {} from the database...'.format(table), end=' ')
+        print(f'Getting data for {table} from the database...', end=' ')
 
     try:
         con = sqlite3.connect(db)
@@ -121,7 +121,7 @@ def get_CTD_data(db, table, fields, noisy=False):
         with con:
             c = con.cursor()
             # I know, using a string is Bad. But it works and it's only me working with this.
-            c.execute('SELECT {} FROM {}'.format(','.join(fields), table))
+            c.execute(f"SELECT {','.join(fields)} FROM {table}")
 
             # Now get the data in a format we might actually want to use
             data = np.asarray(c.fetchall()).astype(float)
@@ -132,7 +132,7 @@ def get_CTD_data(db, table, fields, noisy=False):
     except sqlite3.Error as e:
         if con:
             con.close()
-            print('Error {}:'.format(e.args[0]))
+            print(f'Error {e.args[0]}:')
             data = np.asarray([False])
 
     finally:
@@ -173,8 +173,7 @@ def get_ferrybox_data(db, fields, table='PrideOfBilbao', noisy=False):
     """
 
     if noisy:
-        print('Getting data for {} from the database...'.format(table),
-              end=' ')
+        print(f'Getting data for {table} from the database...', end=' ')
 
     try:
         con = sqlite3.connect(db)
@@ -183,7 +182,7 @@ def get_ferrybox_data(db, fields, table='PrideOfBilbao', noisy=False):
             c = con.cursor()
             # I know, using a string is Bad. But it works and it's only me
             # working with this.
-            c.execute('SELECT {} FROM {}'.format(','.join(fields), table))
+            c.execute(f"SELECT {','.join(fields)} FROM {table}")
 
             # Now get the data in a format we might actually want to use
             data = np.asarray(c.fetchall())
@@ -194,7 +193,7 @@ def get_ferrybox_data(db, fields, table='PrideOfBilbao', noisy=False):
     except sqlite3.Error as e:
         if con:
             con.close()
-            print('Error {}:'.format(e.args[0]))
+            print(f'Error {e.args[0]}:')
             data = np.asarray([False])
 
     finally:
@@ -222,12 +221,7 @@ def _split_wco_lines(line):
     """
 
     delimiters = (';', ',', ' ')
-    delimiter = None
-    for d in delimiters:
-        if d in line:
-            delimiter = d
-            break
-
+    delimiter = next((d for d in delimiters if d in line), None)
     return split_string(line, delimiter)
 
 
@@ -298,7 +292,9 @@ class CTD(object):
         elif suffix == '.lst':
             self._write_lst(filename)
         else:
-            raise ValueError('Unsupported file extension: {}, supply either .lst or .qxf'.format(suffix))
+            raise ValueError(
+                f'Unsupported file extension: {suffix}, supply either .lst or .qxf'
+            )
 
     def _write_lst(self, filename):
         """
@@ -377,7 +373,7 @@ class CTD(object):
                 f.write(header_string.format(bodc_header_lines, num_samples))
                 series_string = 'Series=      {}                     Produced: {}\n'
                 f.write(series_string.format(current_file.stem, datetime.now().strftime('%d-%b-%Y')))  # dummy data for now
-                f.write('Id                       {}\n'.format(current_file.stem))  # more dummy data
+                f.write(f'Id                       {current_file.stem}\n')
                 position_string = '{deglat:03d}d{minlat:.1f}m{hemilat}{deglon:03d}d{minlon:.1f}m{hemilon}'
                 position = position_string.format(deglat=abs(int(lat)),
                                                   minlat=(abs(lat) - abs(int(lat))) * 60,
@@ -387,13 +383,13 @@ class CTD(object):
                                                   hemilon=westeast)
                 f.write('{position}                     start:{start}\n'.format(position=position, start=start))
                 format_string = 'Dep: floor {depth:.1f} sensor    {sensor_1:.1f}  {sensor_2:.1f} ' \
-                                'Nom. sample int.:    {interval:.1f} {units}\n'
+                                    'Nom. sample int.:    {interval:.1f} {units}\n'
                 f.write(format_string.format(depth=self.position.depth[counter],
                                              sensor_1=sensor[0],
                                              sensor_2=sensor[1],
                                              interval=self.time.interval[counter],
                                              units=self.time.time_units[counter]))
-                f.write('    {} Parameters included:\n'.format(num_fields))
+                f.write(f'    {num_fields} Parameters included:\n')
                 # Now we're into the headers for each variable.
                 f.write('Parameter f    P    Q Absent Data Value Minimum Value  Maximum Value       Units\n')
                 for name in self.variables.names[counter]:
@@ -409,25 +405,26 @@ class CTD(object):
                                                  min=np.nanmin(getattr(self.data, name)[counter]),
                                                  max=np.nanmax(getattr(self.data, name)[counter]),
                                                  unit=self.variables.units[counter][name]))
-                    f.write('{}\n'.format(self.variables.long_name[counter][name][:80]))  # maximum line length is 80 characters
+                    f.write(f'{self.variables.long_name[counter][name][:80]}\n')
                 f.write('\n')
                 f.write('Format Record\n')
                 f.write('(some nonsense for now)\n')
                 # A few more new lines in case we're missing some.
                 f.write('\n\n\n')
                 # The data header.
-                f.write('  Cycle     {}\n'.format('   '.join([i[:8] for i in self.variables.names[counter] if i not in ('mm_dd_yyyy', 'hh_mm_ss')])))
-                f.write('Number             {}\n'.format('          '.join('f' * num_fields)))
+                f.write(
+                    f"  Cycle     {'   '.join([i[:8] for i in self.variables.names[counter] if i not in ('mm_dd_yyyy', 'hh_mm_ss')])}\n"
+                )
+                f.write(f"Number             {'          '.join('f' * num_fields)}\n")
                 # Now add the data.
-                cycle = ['{})'.format(i) for i in np.arange(num_samples) + 1]
-                data = []
-                for name in self.variables.names[counter]:
-                    # Skip WCO time data columns as we haven't saved those with _ReadData._read_wco().
-                    if name in ('mm_dd_yyyy', 'hh_mm_ss'):
-                        continue
-                    data.append(['{}'.format(i) for i in getattr(self.data, name)[counter]])
-                if self._debug:
-                    if np.diff([len(i) for i in data]).max() == 1:
+                cycle = [f'{i})' for i in np.arange(num_samples) + 1]
+                data = [
+                    [f'{i}' for i in getattr(self.data, name)[counter]]
+                    for name in self.variables.names[counter]
+                    if name not in ('mm_dd_yyyy', 'hh_mm_ss')
+                ]
+                if np.diff([len(i) for i in data]).max() == 1:
+                    if self._debug:
                         raise ValueError('broken data')
                 data = np.column_stack((cycle, np.asarray(data).T))
 
@@ -485,9 +482,6 @@ class CTD(object):
             elif self._file.suffix == '.txt':
                 # I don't like this one bit.
                 self._read_wco_header()
-            else:
-                # Add more readers here.
-                pass
 
         def _read_lst_header(self):
             """

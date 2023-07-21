@@ -352,9 +352,10 @@ class StubFile(object):
     def _make_tide(self, amplitude, phase, period):
         """ Create a sinusoid of given amplitude, phase and period. """
 
-        tide = amplitude * np.sin((2 * np.pi * period * (self.time.time - np.min(self.time.time))) + np.deg2rad(phase))
-
-        return tide
+        return amplitude * np.sin(
+            (2 * np.pi * period * (self.time.time - np.min(self.time.time)))
+            + np.deg2rad(phase)
+        )
 
 
 class FileReader_test(TestCase):
@@ -453,11 +454,11 @@ class FileReader_test(TestCase):
 
     def test_get_layer_no_variable(self):
         F = FileReader(self.stub.ncfile.name, dims={'siglay': np.arange(0, 10, 2)})
-        test.assert_almost_equal(F.grid.siglay, self.reference.grid.siglay[0:10:2])
+        test.assert_almost_equal(F.grid.siglay, self.reference.grid.siglay[:10:2])
 
     def test_get_level_no_variable(self):
         F = FileReader(self.stub.ncfile.name, dims={'siglev': np.arange(0, 11, 2)})
-        test.assert_almost_equal(F.grid.siglev, self.reference.grid.siglev[0:11:2])
+        test.assert_almost_equal(F.grid.siglev, self.reference.grid.siglev[:11:2])
 
     def test_non_temporal_variable(self):
         h = np.asarray([1.64808428, 12.75706577, 18.34670639, 24.29236031,

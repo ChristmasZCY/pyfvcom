@@ -37,13 +37,14 @@ fvcom = FileReader('sample.nc', dims={'time': range(200)}, variables=['zeta', 't
 # In[4]:
 
 # Make a plot of the surface elevation.
-plot = Plotter(fvcom,
-               figsize=(20, 20),
-               res='i',
-               tick_inc=(4, 2),
-               cb_label='{} ({})'.format(fvcom.atts.zeta.long_name,
-                                         fvcom.atts.zeta.units),
-               cmap=cm.balance)
+plot = Plotter(
+    fvcom,
+    figsize=(20, 20),
+    res='i',
+    tick_inc=(4, 2),
+    cb_label=f'{fvcom.atts.zeta.long_name} ({fvcom.atts.zeta.units})',
+    cmap=cm.balance,
+)
 plot.plot_field(fvcom.data.zeta[5, :])
 plot.axes.set_title(fvcom.time.datetime[5].strftime('%Y-%m-%d %H:%M:%S'))
 
@@ -53,9 +54,12 @@ plot.axes.set_title(fvcom.time.datetime[5].strftime('%Y-%m-%d %H:%M:%S'))
 # Plot a temperature transect between two locations.
 positions = np.array(((-5, 50), (-4.5, 49.5)))
 indices, distance = fvcom.horizontal_transect_nodes(positions)
-plot = Depth(fvcom, figsize=(20, 9), 
-             cb_label='Temperature ({})'.format(fvcom.ds.variables['temp'].units),
-             cmap=cm.thermal)
+plot = Depth(
+    fvcom,
+    figsize=(20, 9),
+    cb_label=f"Temperature ({fvcom.ds.variables['temp'].units})",
+    cmap=cm.thermal,
+)
 # fill_seabed makes the part of the plot below the seabed grey.
 plot.plot_slice(distance / 1000,  # to kilometres from metres
                 fvcom.grid.siglay_z[:, indices],
@@ -76,16 +80,18 @@ index = fvcom.closest_node(gauge)
 time = Time(fvcom, figsize=(20, 9), title='{} at {}, {}'.format(fvcom.atts.zeta.long_name,
                                                                 *gauge))
 time.plot_line(fvcom.data.zeta[:, index], color='r')
-time.axes.set_ylabel('{} ({})'.format(fvcom.atts.zeta.long_name,
-                                      fvcom.atts.zeta.units))
+time.axes.set_ylabel(f'{fvcom.atts.zeta.long_name} ({fvcom.atts.zeta.units})')
 
 
 # In[7]:
 
 # Plot a depth-varying time profile through a water column
 fvcom = FileReader('sample.nc', variables=['temp', 'zeta'], dims={'time': range(400), 'node': [5000]})
-time = Time(fvcom, figsize=(20, 9), cb_label='{} ({})'.format(fvcom.atts.temp.long_name,
-                                                              fvcom.atts.temp.units))
+time = Time(
+    fvcom,
+    figsize=(20, 9),
+    cb_label=f'{fvcom.atts.temp.long_name} ({fvcom.atts.temp.units})',
+)
 z = make_water_column(fvcom.data.zeta, fvcom.grid.h, fvcom.grid.siglay)
 # fill_seabed makes the part of the plot below the seabed grey.
 # We need to squeeze the data array since we've only extracted a single

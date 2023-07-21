@@ -67,28 +67,29 @@ def grad_ls_stencil_weight_calc(filereader, stencil_type=3, weight_type='inverse
         for i, this_row in enumerate(filereader.grid.nbe):
             start_list = list(this_row[:])
             for this_node in this_row:
-               for this_neighbour in filereader.grid.nbe[this_node,:]:
-                    start_list.append(this_neighbour) 
+                start_list.extend(iter(filereader.grid.nbe[this_node,:]))
             start_list = list(set(start_list))
             stencils[i] = np.asarray(start_list)[~np.isin(np.asarray(start_list),[-1,i])]
-            
+
 
     r_cfs = {}
     for this_element, this_stencil in stencils.items():
         this_element_xy = [filereader.grid.xc[this_element], filereader.grid.yc[this_element]]
-        stencil_vecs = []    
-        for this_stencil_node in this_stencil:
-            stencil_vecs.append([filereader.grid.xc[this_stencil_node] - this_element_xy[0], filereader.grid.yc[this_stencil_node] - this_element_xy[1]])
+        stencil_vecs = [
+            [
+                filereader.grid.xc[this_stencil_node] - this_element_xy[0],
+                filereader.grid.yc[this_stencil_node] - this_element_xy[1],
+            ]
+            for this_stencil_node in this_stencil
+        ]
         r_cfs[this_element] = stencil_vecs
 
     w_ks = {}
     if weight_type == 'inverse':
         for this_element, this_r_cfs in r_cfs.items():
-            wghts = []
-            for this_rc in this_r_cfs:
-                 wghts.append(1/np.sqrt(this_rc[0]**2 + this_rc[1]**2))
+            wghts = [1/np.sqrt(this_rc[0]**2 + this_rc[1]**2) for this_rc in this_r_cfs]
             w_ks[this_element] = wghts
- 
+
     return stencils, r_cfs, w_ks
 
 
@@ -121,7 +122,7 @@ def green_gauss_gradient_method(field, filereader, skewness_correct=False, itera
             Fjfj = np.sqrt((filereader.grid.xc[this_nbe[j]] - face_centroids_x[i,j])**2 + (filereader.grid.yc[this_nbe[j]] - face_centroids_y[i,j])**2)
             Cfj = np.sqrt((filereader.grid.xc[i] - face_centroids_x[i,j])**2 + (filereader.grid.yc[i] - face_centroids_y[i,j])**2)
             interp_factor[i,j] = Fjfj/(Fjfj + Cfj)
-    
+
     # Cell volumes
     filereader.calculate_areas()
     Vc = filereader.grid.areas
@@ -133,10 +134,10 @@ def green_gauss_gradient_method(field, filereader, skewness_correct=False, itera
             for j, this_neighbour in enumerate(this_nbe):
                 if this_neighbour != -1:
                     phi_fdash[i,j] = 0.5*(field[i]  + field[this_neighbour])
-        
+
         grad_current = _phi_grad_calc(phi_fdash, [surface_vector_i, surface_vector_j], Vc)       
 
-        for this_it in np.arange(0, iterations):
+        for _ in np.arange(0, iterations):
             new_phi = np.zeros(filereader.grid.triangles.shape)
 
             for i, this_nbe in enumerate(filereader.grid.nbe):
@@ -153,9 +154,8 @@ def green_gauss_gradient_method(field, filereader, skewness_correct=False, itera
             grad_current = _phi_grad_calc(new_phi, [surface_vector_i, surface_vector_j], Vc)
             phi_fdash = copy.deepcopy(new_phi)
 
-        grad_out = grad_current
+        return grad_current
 
-    # Simple Green gauss
     else:
         phi_fs = np.zeros(filereader.grid.triangles.shape)
 
@@ -164,10 +164,8 @@ def green_gauss_gradient_method(field, filereader, skewness_correct=False, itera
                 if this_neighbour != -1:
                     this_interp_factor = interp_factor[i,j]
                     phi_fs[i,j] = this_interp_factor*field[i]  + (1- this_interp_factor)*field[this_neighbour] 
- 
-        grad_out = _phi_grad_calc(phi_fs, [surface_vector_i, surface_vector_j], Vc)
 
-    return grad_out
+        return _phi_grad_calc(phi_fs, [surface_vector_i, surface_vector_j], Vc)
 
 def _phi_grad_calc(phis, surface_vector, Vc):
     grad_field = np.zeros([len(surface_vector[0]),2])
